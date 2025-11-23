@@ -48,6 +48,7 @@ class UsbCameraFragment : CameraFragment() {
     private lateinit var statusText: TextView
     
     // Control Components
+    private lateinit var cameraSpinner: Spinner
     private lateinit var resolutionSpinner: Spinner
     private lateinit var fpsSpinner: Spinner
     private lateinit var rotationSpinner: Spinner
@@ -154,14 +155,42 @@ class UsbCameraFragment : CameraFragment() {
             }
         })
         
-        // Title
-        sidebarLayout.addView(TextView(requireContext()).apply {
+        // Header with title and close button
+        val headerLayout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 20)
+        }
+        
+        headerLayout.addView(TextView(requireContext()).apply {
             text = "Settings"
             setTextColor(android.graphics.Color.parseColor("#212121"))
             textSize = 20f
-            setPadding(0, 0, 0, 20)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
+        
+        headerLayout.addView(Button(requireContext()).apply {
+            text = "✕"
+            textSize = 20f
+            setBackgroundColor(android.graphics.Color.parseColor("#E0E0E0"))
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            val size = (40 * resources.displayMetrics.density).toInt()
+            layoutParams = LinearLayout.LayoutParams(size, size)
+            setPadding(0, 0, 0, 0)
+            
+            // Make it circular
+            post {
+                val drawable = android.graphics.drawable.GradientDrawable()
+                drawable.shape = android.graphics.drawable.GradientDrawable.OVAL
+                drawable.setColor(android.graphics.Color.parseColor("#E0E0E0"))
+                background = drawable
+            }
+            
+            setOnClickListener { toggleSidebar() }
+        })
+        
+        sidebarLayout.addView(headerLayout)
         
         // Auto config button (modern style)
         sidebarLayout.addView(Button(requireContext()).apply {
@@ -171,6 +200,11 @@ class UsbCameraFragment : CameraFragment() {
             setPadding(16, 16, 16, 16)
             setOnClickListener { applyBestConfig() }
         })
+        
+        // Camera selection
+        addSpinnerControl("Connected Camera", listOf(
+            "No cameras detected"
+        )).also { cameraSpinner = it }
         
         // Resolution
         addSpinnerControl("Resolution", listOf(
@@ -380,8 +414,41 @@ class UsbCameraFragment : CameraFragment() {
         super.initData()
         setupSpinners()
         loadSavedConfig()
+        updateCameraList()
         statusText.text = "✓ Ready - Connect USB camera"
         statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+    }
+    
+    private fun updateCameraList() {
+        val usbManager = requireContext().getSystemService(android.content.Context.USB_SERVICE) as android.hardware.usb.UsbManager
+        val deviceList = usbManager.deviceList
+        
+        val cameraNames = mutableListOf<String>()
+        if (deviceList.isEmpty()) {
+            cameraNames.add("No cameras detected")
+        } else {
+            deviceList.values.forEach { device ->
+                // Check if device is a video class device (UVC camera)
+                var isCamera = false
+                for (i in 0 until device.interfaceCount) {
+                    val intf = device.getInterface(i)
+                    if (intf.interfaceClass == 14) { // USB_CLASS_VIDEO
+                        isCamera = true
+                        break
+                    }
+                }
+                if (isCamera) {
+                    cameraNames.add("${device.productName ?: "USB Camera"} (${device.deviceName})")
+                }
+            }
+            if (cameraNames.isEmpty()) {
+                cameraNames.add("No cameras detected")
+            }
+        }
+        
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, cameraNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        cameraSpinner.adapter = adapter
     }
     
     private fun setupSpinners() {
