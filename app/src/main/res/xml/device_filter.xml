@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Filter for USB Video Class devices -->
+    <usb-device class="14" subclass="1" protocol="0" />
+    <usb-device class="14" subclass="2" protocol="0" />
+</resources>

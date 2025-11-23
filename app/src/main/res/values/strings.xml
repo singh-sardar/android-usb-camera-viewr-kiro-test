@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WebcamViewerNative</string>
+
+    <!-- Initial options for the Camera Selector. Will be dynamically populated later. -->
+    <string-array name="default_camera_options">
+        <item>Loading cameras...</item>
+    </string-array>
+
+    <!-- Resolution Options (Same as your original HTML) -->
+    <string-array name="default_resolution_options">
+        <item>4K (3840x2160)</item>
+        <item>2K (2560x1440)</item>
+        <item>1080p (1920x1080)</item>
+        <item>720p (1280x720)</item>
+        <item>VGA (640x480)</item>
+    </string-array>
+
+    <!-- FPS Options -->
+    <string-array name="default_fps_options">
+        <item>60 FPS</item>
+        <item>30 FPS</item>
+        <item>15 FPS</item>
+    </string-array>
+
+    <!-- Orientation Options -->
+    <string-array name="default_orientation_options">
+        <item>0° (Default)</item>
+        <item>90°</item>
+        <item>180°</item>
+        <item>270°</item>
+    </string-array>
+
+    <!-- Flip Options -->
+    <string-array name="default_flip_options">
+        <item>No Flip</item>
+        <item>Flip Right/Left</item>
+        <item>Flip Up/Down (Vertical)</item>
+    </string-array>
+</resources>
