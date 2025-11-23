@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">WebcamViewerNative</string>
+    <string name="app_name">Gurdwara Camera</string>
 
     <!-- Initial options for the Camera Selector. Will be dynamically populated later. -->
     <string-array name="default_camera_options">

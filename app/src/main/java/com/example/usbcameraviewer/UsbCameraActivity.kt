@@ -20,6 +20,9 @@ import com.jiangdg.ausbc.widget.IAspectRatio
  */
 class UsbCameraActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Switch from splash theme to normal theme
+        setTheme(R.style.Theme_WebcamViewerNative)
+        
         super.onCreate(savedInstanceState)
         
         if (savedInstanceState == null) {
@@ -63,7 +66,7 @@ class UsbCameraFragment : CameraFragment() {
             setBackgroundColor(android.graphics.Color.BLACK)
         }
         
-        // Camera view container (full screen)
+        // Camera view container (full screen, clean)
         cameraContainer = FrameLayout(requireContext()).apply {
             setBackgroundColor(android.graphics.Color.BLACK)
             layoutParams = FrameLayout.LayoutParams(
@@ -73,34 +76,34 @@ class UsbCameraFragment : CameraFragment() {
         }
         mainLayout.addView(cameraContainer)
         
-        // Status bar at top
-        statusText = TextView(requireContext()).apply {
-            text = "Initializing..."
-            setTextColor(android.graphics.Color.WHITE)
-            textSize = 14f
-            setPadding(16, 16, 16, 16)
-            gravity = Gravity.CENTER
-            setBackgroundColor(android.graphics.Color.parseColor("#AA000000"))
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP
-            )
-        }
-        mainLayout.addView(statusText)
-        
-        // Toggle button
+        // Modern floating action button
         toggleButton = Button(requireContext()).apply {
-            text = "⚙️"
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.END
-            ).apply {
-                setMargins(0, 60, 16, 0)
+            text = "⚙"
+            textSize = 24f
+            setBackgroundColor(android.graphics.Color.parseColor("#2196F3"))
+            setTextColor(android.graphics.Color.WHITE)
+            
+            // Make it circular
+            val size = (56 * resources.displayMetrics.density).toInt()
+            layoutParams = FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.END).apply {
+                setMargins(0, 16, 16, 0)
             }
+            
+            // Rounded corners and elevation
+            elevation = 6f
+            stateListAnimator = null // Remove default animation
+            
             setOnClickListener { toggleSidebar() }
         }
+        
+        // Make button circular after layout
+        toggleButton.post {
+            val drawable = android.graphics.drawable.GradientDrawable()
+            drawable.shape = android.graphics.drawable.GradientDrawable.OVAL
+            drawable.setColor(android.graphics.Color.parseColor("#2196F3"))
+            toggleButton.background = drawable
+        }
+        
         mainLayout.addView(toggleButton)
         
         // Sidebar
@@ -111,35 +114,61 @@ class UsbCameraFragment : CameraFragment() {
     
     /**
      * Creates the sidebar with all camera controls
-     * Sidebar is hidden by default and can be toggled with the settings button
+     * Modern design with clean UI
      */
     private fun createSidebar() {
         sidebarScroll = ScrollView(requireContext()).apply {
-            setBackgroundColor(android.graphics.Color.parseColor("#DD222222"))
+            setBackgroundColor(android.graphics.Color.parseColor("#F5F5F5"))
             layoutParams = FrameLayout.LayoutParams(
-                (300 * resources.displayMetrics.density).toInt(),
+                (320 * resources.displayMetrics.density).toInt(),
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 Gravity.END
             )
             visibility = View.GONE
+            elevation = 8f
         }
         
         sidebarLayout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(16, 16, 16, 16)
+            setPadding(24, 24, 24, 24)
         }
+        
+        // Status text (moved from overlay)
+        statusText = TextView(requireContext()).apply {
+            text = "Initializing..."
+            setTextColor(android.graphics.Color.parseColor("#666666"))
+            textSize = 12f
+            setPadding(0, 0, 0, 16)
+            gravity = Gravity.CENTER
+        }
+        sidebarLayout.addView(statusText)
+        
+        // Divider
+        sidebarLayout.addView(View(requireContext()).apply {
+            setBackgroundColor(android.graphics.Color.parseColor("#E0E0E0"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                2
+            ).apply {
+                setMargins(0, 0, 0, 16)
+            }
+        })
         
         // Title
         sidebarLayout.addView(TextView(requireContext()).apply {
-            text = "Camera Settings"
-            setTextColor(android.graphics.Color.WHITE)
-            textSize = 18f
-            setPadding(0, 0, 0, 16)
+            text = "Settings"
+            setTextColor(android.graphics.Color.parseColor("#212121"))
+            textSize = 20f
+            setPadding(0, 0, 0, 20)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
         
-        // Auto config button
+        // Auto config button (modern style)
         sidebarLayout.addView(Button(requireContext()).apply {
             text = "🎯 Auto Best Config"
+            setBackgroundColor(android.graphics.Color.parseColor("#2196F3"))
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(16, 16, 16, 16)
             setOnClickListener { applyBestConfig() }
         })
         
@@ -160,31 +189,36 @@ class UsbCameraFragment : CameraFragment() {
         
         // Flip controls
         sidebarLayout.addView(TextView(requireContext()).apply {
-            text = "Flip"
-            setTextColor(android.graphics.Color.WHITE)
+            text = "FLIP"
+            setTextColor(android.graphics.Color.parseColor("#757575"))
+            textSize = 12f
             setPadding(0, 16, 0, 8)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
         
         flipHorizontalCheck = CheckBox(requireContext()).apply {
-            text = "Flip Horizontal"
-            setTextColor(android.graphics.Color.WHITE)
+            text = "Horizontal"
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            setPadding(8, 8, 8, 8)
             setOnCheckedChangeListener { _, _ -> applyTransform() }
         }
         sidebarLayout.addView(flipHorizontalCheck)
         
         flipVerticalCheck = CheckBox(requireContext()).apply {
-            text = "Flip Vertical"
-            setTextColor(android.graphics.Color.WHITE)
+            text = "Vertical"
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            setPadding(8, 8, 8, 8)
             setOnCheckedChangeListener { _, _ -> applyTransform() }
         }
         sidebarLayout.addView(flipVerticalCheck)
         
         // Camera controls
         sidebarLayout.addView(TextView(requireContext()).apply {
-            text = "Camera Controls"
-            setTextColor(android.graphics.Color.WHITE)
-            textSize = 16f
+            text = "ADJUSTMENTS"
+            setTextColor(android.graphics.Color.parseColor("#757575"))
+            textSize = 12f
             setPadding(0, 16, 0, 8)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
         
         brightnessSeek = createSeekBar("Brightness", -100, 100)
@@ -194,6 +228,15 @@ class UsbCameraFragment : CameraFragment() {
         // Logs button
         sidebarLayout.addView(Button(requireContext()).apply {
             text = "📋 View Logs"
+            setBackgroundColor(android.graphics.Color.parseColor("#757575"))
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(16, 16, 16, 16)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 16, 0, 0)
+            }
             setOnClickListener {
                 startActivity(android.content.Intent(requireContext(), LogViewerActivity::class.java))
             }
@@ -206,11 +249,16 @@ class UsbCameraFragment : CameraFragment() {
     private fun addSpinnerControl(label: String, items: List<String>): Spinner {
         sidebarLayout.addView(TextView(requireContext()).apply {
             text = label
-            setTextColor(android.graphics.Color.WHITE)
+            setTextColor(android.graphics.Color.parseColor("#757575"))
+            textSize = 12f
             setPadding(0, 16, 0, 8)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
         })
         
-        val spinner = Spinner(requireContext())
+        val spinner = Spinner(requireContext()).apply {
+            setPadding(12, 12, 12, 12)
+            setBackgroundColor(android.graphics.Color.WHITE)
+        }
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, items)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = adapter
@@ -220,23 +268,54 @@ class UsbCameraFragment : CameraFragment() {
     }
     
     private fun toggleSidebar() {
-        sidebarScroll.visibility = if (sidebarScroll.visibility == View.VISIBLE) {
-            View.GONE
+        if (sidebarScroll.visibility == View.VISIBLE) {
+            // Slide out animation
+            sidebarScroll.animate()
+                .translationX(sidebarScroll.width.toFloat())
+                .alpha(0f)
+                .setDuration(250)
+                .withEndAction {
+                    sidebarScroll.visibility = View.GONE
+                }
+                .start()
+            
+            // Rotate button
+            toggleButton.animate()
+                .rotation(0f)
+                .setDuration(250)
+                .start()
         } else {
-            View.VISIBLE
+            // Prepare for slide in
+            sidebarScroll.visibility = View.VISIBLE
+            sidebarScroll.translationX = sidebarScroll.width.toFloat()
+            sidebarScroll.alpha = 0f
+            
+            // Slide in animation
+            sidebarScroll.animate()
+                .translationX(0f)
+                .alpha(1f)
+                .setDuration(250)
+                .start()
+            
+            // Rotate button
+            toggleButton.animate()
+                .rotation(90f)
+                .setDuration(250)
+                .start()
         }
     }
     
     private fun createSeekBar(label: String, min: Int, max: Int): SeekBar {
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 8, 0, 8)
+            setPadding(0, 12, 0, 12)
         }
         
         layout.addView(TextView(requireContext()).apply {
             text = label
-            setTextColor(android.graphics.Color.WHITE)
-            layoutParams = LinearLayout.LayoutParams(100, LinearLayout.LayoutParams.WRAP_CONTENT)
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(90, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
         
         val seekBar = SeekBar(requireContext()).apply {
@@ -248,8 +327,10 @@ class UsbCameraFragment : CameraFragment() {
         
         val valueText = TextView(requireContext()).apply {
             text = "0"
-            setTextColor(android.graphics.Color.WHITE)
-            layoutParams = LinearLayout.LayoutParams(50, LinearLayout.LayoutParams.WRAP_CONTENT)
+            setTextColor(android.graphics.Color.parseColor("#2196F3"))
+            textSize = 13f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(45, LinearLayout.LayoutParams.WRAP_CONTENT)
             gravity = Gravity.END
         }
         layout.addView(valueText)
@@ -299,8 +380,8 @@ class UsbCameraFragment : CameraFragment() {
         super.initData()
         setupSpinners()
         loadSavedConfig()
-        statusText.text = "✓ Camera ready - Connect USB camera"
-        statusText.setTextColor(android.graphics.Color.GREEN)
+        statusText.text = "✓ Ready - Connect USB camera"
+        statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
     }
     
     private fun setupSpinners() {
@@ -319,7 +400,8 @@ class UsbCameraFragment : CameraFragment() {
                 val fps = fpsSpinner.selectedItem.toString().toInt()
                 val config = settingsManager?.loadConfig() ?: CameraConfig()
                 settingsManager?.saveConfig(config.copy(fps = fps))
-                statusText.text = "FPS: $fps"
+                statusText.text = "✓ ${fps} fps"
+                statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
@@ -384,8 +466,8 @@ class UsbCameraFragment : CameraFragment() {
         val config = settingsManager?.loadConfig() ?: CameraConfig()
         settingsManager?.saveConfig(config.copy(width = width, height = height))
         
-        statusText.text = "Resolution: ${width}x${height}"
-        Toast.makeText(requireContext(), "Resolution updated", Toast.LENGTH_SHORT).show()
+        statusText.text = "✓ ${width}x${height}"
+        statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
     }
     
     private fun applyBestConfig() {
@@ -409,8 +491,24 @@ class UsbCameraFragment : CameraFragment() {
         val flipH = flipHorizontalCheck.isChecked
         val flipV = flipVerticalCheck.isChecked
         
+        // Calculate combined rotation with flips
+        // Flip horizontal = 180° + original rotation
+        // Flip vertical = mirror effect
+        var finalRotation = rotation
+        
+        if (flipH && flipV) {
+            // Both flips = 180° rotation
+            finalRotation = (rotation + 180) % 360
+        } else if (flipH) {
+            // Horizontal flip = mirror + 180°
+            finalRotation = (rotation + 180) % 360
+        } else if (flipV) {
+            // Vertical flip = mirror
+            finalRotation = (180 - rotation + 360) % 360
+        }
+        
         // Apply rotation using library's setRotateType
-        val rotateType = when (rotation) {
+        val rotateType = when (finalRotation) {
             0 -> com.jiangdg.ausbc.render.env.RotateType.ANGLE_0
             90 -> com.jiangdg.ausbc.render.env.RotateType.ANGLE_90
             180 -> com.jiangdg.ausbc.render.env.RotateType.ANGLE_180
@@ -427,7 +525,13 @@ class UsbCameraFragment : CameraFragment() {
             flipVertical = flipV
         ))
         
-        statusText.text = "Transform: ${rotation}° ${if(flipH) "H" else ""}${if(flipV) "V" else ""}"
+        // Update status in sidebar
+        val flipText = mutableListOf<String>()
+        if (flipH) flipText.add("H-Flip")
+        if (flipV) flipText.add("V-Flip")
+        val flipStr = if (flipText.isNotEmpty()) " + ${flipText.joinToString(", ")}" else ""
+        statusText.text = "✓ ${rotation}°${flipStr}"
+        statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
     }
     
     override fun getGravity(): Int = Gravity.CENTER
