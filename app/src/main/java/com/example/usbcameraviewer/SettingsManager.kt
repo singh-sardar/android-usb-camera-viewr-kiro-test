@@ -3,6 +3,10 @@ package com.example.usbcameraviewer
 import android.content.Context
 import android.content.SharedPreferences
 
+/**
+ * Camera configuration data class
+ * Stores all camera settings that can be persisted
+ */
 data class CameraConfig(
     val deviceName: String = "",
     val width: Int = 1920,
@@ -13,6 +17,10 @@ data class CameraConfig(
     val flipVertical: Boolean = false
 )
 
+/**
+ * Manages persistent storage of camera settings
+ * Uses SharedPreferences to save and restore user preferences
+ */
 class SettingsManager(context: Context) {
     
     private val prefs: SharedPreferences = context.getSharedPreferences(

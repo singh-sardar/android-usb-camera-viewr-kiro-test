@@ -1,84 +1,83 @@
-# USB Camera Viewer for Android 📹
+# USB Camera Viewer for Android
 
-A production-ready Android application for viewing USB cameras on Android boxes with full configuration capabilities.
+A simple, efficient Android app for viewing USB cameras with real-time controls.
 
-## 🚀 Quick Start
+## Features
 
-```bash
-# Install the app
-adb install app/build/outputs/apk/release/app-release-unsigned.apk
+- ✅ **Live USB Camera Preview** - Real-time video streaming from UVC cameras
+- ✅ **Multiple Resolutions** - Support from 640x480 to 4K (3840x2160)
+- ✅ **FPS Control** - 15, 24, 30, 60 fps options
+- ✅ **Image Rotation** - 0°, 90°, 180°, 270° rotation
+- ✅ **Flip Controls** - Horizontal and vertical flip
+- ✅ **Camera Adjustments** - Brightness, contrast, saturation
+- ✅ **Auto Configuration** - One-tap best settings (720p@30fps)
+- ✅ **Settings Persistence** - Remembers your preferences
+- ✅ **Auto-Launch** - Opens automatically when USB camera is connected
+- ✅ **In-App Logs** - Built-in log viewer for debugging
 
-# Or use debug version
-adb install app/build/outputs/apk/debug/app-debug.apk
-```
+## Requirements
 
-**That's it!** Connect a USB camera and the app will detect it automatically.
+- Android 5.0 (API 21) or higher
+- USB OTG support
+- UVC-compatible USB camera
 
-## ✨ Features
+## Installation
 
-- **Full-screen camera display** with live rendering
-- **USB device detection** - Automatic camera discovery
-- **Multiple resolutions** - 4K, 1080p, 720p, VGA
-- **Frame rate control** - 60, 30, 24, 15 fps
-- **Image transformations** - Rotation (0°/90°/180°/270°) and flip
-- **Settings persistence** - Saves all configurations
-- **Auto-launch** - Opens automatically when camera connected
-- **Camera controls** - Brightness, contrast, saturation, focus
-- **Auto-retry** - Reconnects every 15 seconds on failure
-- **USB hotplug** - Detects camera attach/detach
+1. Download the APK from `app/build/outputs/apk/debug/app-debug.apk`
+2. Enable "Install from Unknown Sources" in Android settings
+3. Install the APK
+4. Connect your USB camera
+5. Grant USB permission when prompted
 
-## 📦 Downloads
+## Usage
 
-| Version | Size | Min Android | Purpose | Download |
-|---------|------|-------------|---------|----------|
-| **Release v1.1** | 2.5 MB | 5.0+ | Production use | `app/build/outputs/apk/release/app-release-unsigned.apk` |
-| **Debug v1.1** | 13 MB | 5.0+ | Testing/Development | `app/build/outputs/apk/debug/app-debug.apk` |
+### Basic Operation
 
-**New in v1.1**: Universal compatibility - works on phones, tablets, and TV boxes!
+1. **Launch the app** - Opens automatically when USB camera is connected
+2. **View live feed** - Camera preview appears full-screen
+3. **Access settings** - Tap the ⚙️ button in the top-right corner
 
-## 📱 Requirements
+### Sidebar Controls
 
-- **Android**: 5.0+ (API 21+) - Works on 95%+ devices!
-- **USB Host**: Optional (required only for USB camera features)
-- **Camera**: UVC-compliant USB camera (for USB features)
-- **Permissions**: Camera, USB access
+- **Resolution** - Select from 640x480 to 4K
+- **FPS** - Choose frame rate (15-60 fps)
+- **Rotation** - Rotate image 0°, 90°, 180°, or 270°
+- **Flip** - Toggle horizontal/vertical flip
+- **Brightness** - Adjust camera brightness (-100 to +100)
+- **Contrast** - Adjust camera contrast (-100 to +100)
+- **Saturation** - Adjust camera saturation (-100 to +100)
+- **Auto Best Config** - Apply optimal settings (720p@30fps)
+- **View Logs** - Open in-app log viewer
 
-**✅ Universal Compatibility**: Installs on ALL Android devices including phones, tablets, and TV boxes!
+## Technical Details
 
-## 🎯 Quick Usage
+### Architecture
 
-1. **Install** the APK on your Android device
-2. **Connect** USB camera via OTG adapter
-3. **Grant** camera and USB permissions
-4. **Enjoy** full-screen camera view!
+- **Library**: AndroidUSBCamera (AUSBC) v3.2.7
+- **Native Support**: libuvc with isochronous transfer
+- **Rendering**: OpenGL ES 2.0 hardware acceleration
+- **Language**: Kotlin
+- **Min SDK**: 21 (Android 5.0)
+- **Target SDK**: 33 (Android 13)
 
-### Configuration
+### Key Components
 
-Tap the **⚙** icon to access:
-- Camera device selection
-- Resolution and FPS settings
-- Rotation and flip controls
-- Camera controls (brightness, contrast, etc.)
-- Auto-launch settings
+- `UsbCameraActivity` - Main activity with camera fragment
+- `UsbCameraFragment` - Camera preview and controls
+- `SettingsManager` - Persistent configuration storage
+- `AppLogger` - Logging system
+- `LogViewerActivity` - In-app log viewer
 
-## 📚 Documentation
+### Supported Cameras
 
-### For Users
-- **[Quick Start Guide](docs/user-guide/QUICKSTART.md)** - Get started in 5 minutes
-- **[User Manual](docs/user-guide/USER_MANUAL.md)** - Complete usage guide
-- **[Troubleshooting](docs/user-guide/TROUBLESHOOTING.md)** - Common issues and solutions
+Any UVC (USB Video Class) compliant camera:
+- Webcams
+- USB endoscopes
+- USB microscopes
+- Action cameras with USB output
+- DSLR cameras with USB streaming
 
-### For Developers
-- **[Build Guide](docs/developer-guide/BUILD_GUIDE.md)** - How to build from source
-- **[Architecture](docs/developer-guide/ARCHITECTURE.md)** - Technical architecture
-- **[API Reference](docs/developer-guide/API_REFERENCE.md)** - Code documentation
-
-### Reference
-- **[Feature List](docs/reference/FEATURES.md)** - Complete feature list
-- **[Changelog](docs/reference/CHANGELOG.md)** - Version history
-- **[FAQ](docs/reference/FAQ.md)** - Frequently asked questions
-
-## 🛠️ Building from Source
+## Building from Source
 
 ```bash
 # Clone the repository
@@ -91,56 +90,79 @@ cd WebViewCamberViewr
 # Build release APK
 ./gradlew assembleRelease
 
-# Install on connected device
+# Install to connected device
 ./gradlew installDebug
 ```
 
-## 🎨 Screenshots
+## Project Structure
 
-*Coming soon - Add screenshots of the app in action*
+```
+app/src/main/
+├── java/com/example/usbcameraviewer/
+│   ├── UsbCameraActivity.kt      # Main activity
+│   ├── SettingsManager.kt        # Settings persistence
+│   ├── AppLogger.kt              # Logging system
+│   └── LogViewerActivity.kt      # Log viewer
+├── res/
+│   ├── layout/
+│   │   └── activity_log_viewer.xml
+│   └── xml/
+│       └── device_filter.xml     # USB device filter
+└── AndroidManifest.xml
+```
 
-## 🔧 Technical Stack
+## Troubleshooting
 
-- **Language**: Kotlin
-- **Min SDK**: Android 7.0 (API 24)
-- **Target SDK**: Android 14 (API 34)
-- **Architecture**: MVVM with StateFlow
-- **Concurrency**: Kotlin Coroutines
-- **UI**: Material Design 3
+### Camera not detected
+- Ensure USB OTG is supported on your device
+- Check if camera is UVC-compliant
+- Try a different USB cable
+- Check USB permissions in Android settings
 
-## 📊 Performance
+### Black screen
+- Try different resolution (use Auto Best Config)
+- Check camera controls (reset brightness/contrast)
+- View logs for error messages
+- Restart the app
 
-- **CPU Usage**: < 20%
-- **Memory**: < 150MB
-- **Frame Rate**: Up to 60fps
-- **APK Size**: 2.5MB (release)
-- **Startup**: < 1 second
+### Poor performance
+- Lower resolution (try 720p or 480p)
+- Reduce FPS to 30 or 24
+- Close other apps
+- Check device temperature
 
-## 🤝 Contributing
+## Permissions
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+- `CAMERA` - Required for camera access (Android 9+)
+- `USB_PERMISSION` - Automatically requested for USB devices
 
-## 📄 License
+## License
 
-This project is provided as-is for educational and commercial use.
+Apache License 2.0
 
-## 🆘 Support
+## Credits
 
-- **Issues**: Report bugs via GitHub issues
-- **Documentation**: Check the `docs/` folder
-- **Email**: [Your contact email]
+- **AndroidUSBCamera (AUSBC)** by jiangdongguo - USB camera library
+- **libuvc** - Native UVC camera support
+- **libusb** - USB communication
 
-## 🎉 Acknowledgments
+## Documentation
 
-- Android USB Host API
-- Kotlin Coroutines
-- Material Design 3
-- All contributors
+📚 **[Complete Documentation Index](DOCUMENTATION_INDEX.md)** - Start here for all documentation
 
----
+**Quick Links**:
+- **[README.md](README.md)** - This file (user guide)
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Quick reference card
+- **[DEVELOPER.md](DEVELOPER.md)** - Developer guide and API reference
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
+- **[APP_FLOW.md](APP_FLOW.md)** - Application flow and lifecycle
+- **[SETUP.md](SETUP.md)** - Build and setup instructions
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
 
-**Version**: 1.0.0  
-**Status**: ✅ Production Ready  
-**Last Updated**: November 23, 2025
+## Support
 
-**Made with ❤️ for Android developers**
+For issues, questions, or contributions:
+1. Check in-app logs first (⚙️ → View Logs)
+2. Read [DEVELOPER.md](DEVELOPER.md) for technical details
+3. See [APP_FLOW.md](APP_FLOW.md) for understanding the flow
+4. Check [CHANGELOG.md](CHANGELOG.md) for known issues

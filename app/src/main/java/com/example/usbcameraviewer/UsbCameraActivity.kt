@@ -1,6 +1,5 @@
 package com.example.usbcameraviewer
 
-import android.hardware.usb.UsbManager
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -12,11 +11,13 @@ import com.jiangdg.ausbc.CameraClient
 import com.jiangdg.ausbc.base.CameraFragment
 import com.jiangdg.ausbc.camera.CameraUvcStrategy
 import com.jiangdg.ausbc.camera.bean.CameraRequest
-import com.jiangdg.ausbc.callback.ICaptureCallBack
 import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
-import java.io.File
 
+/**
+ * Main activity for USB camera viewing
+ * Hosts the camera fragment and handles lifecycle
+ */
 class UsbCameraActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,14 +30,21 @@ class UsbCameraActivity : AppCompatActivity() {
     }
 }
 
+/**
+ * Camera fragment that handles USB camera preview and controls
+ * Extends AUSBC library's CameraFragment for automatic USB camera management
+ */
 class UsbCameraFragment : CameraFragment() {
     
+    // UI Components
     private lateinit var mainLayout: FrameLayout
     private lateinit var cameraContainer: FrameLayout
     private lateinit var sidebarScroll: ScrollView
     private lateinit var sidebarLayout: LinearLayout
     private lateinit var toggleButton: Button
     private lateinit var statusText: TextView
+    
+    // Control Components
     private lateinit var resolutionSpinner: Spinner
     private lateinit var fpsSpinner: Spinner
     private lateinit var rotationSpinner: Spinner
@@ -45,6 +53,8 @@ class UsbCameraFragment : CameraFragment() {
     private lateinit var brightnessSeek: SeekBar
     private lateinit var contrastSeek: SeekBar
     private lateinit var saturationSeek: SeekBar
+    
+    // Camera and Settings
     private var cameraView: AspectRatioTextureView? = null
     private var settingsManager: SettingsManager? = null
     
@@ -99,6 +109,10 @@ class UsbCameraFragment : CameraFragment() {
         return mainLayout
     }
     
+    /**
+     * Creates the sidebar with all camera controls
+     * Sidebar is hidden by default and can be toggled with the settings button
+     */
     private fun createSidebar() {
         sidebarScroll = ScrollView(requireContext()).apply {
             setBackgroundColor(android.graphics.Color.parseColor("#DD222222"))
@@ -347,6 +361,10 @@ class UsbCameraFragment : CameraFragment() {
         flipVerticalCheck.isChecked = config.flipVertical
     }
     
+    /**
+     * Applies camera control adjustments (brightness, contrast, saturation)
+     * Uses the UVC strategy to communicate with the camera hardware
+     */
     private fun applyCameraControl(control: String, value: Int) {
         val strategy = getCurrentCameraStrategy() as? CameraUvcStrategy ?: return
         
@@ -357,6 +375,9 @@ class UsbCameraFragment : CameraFragment() {
         }
     }
     
+    /**
+     * Changes camera resolution and saves to settings
+     */
     private fun changeResolution(width: Int, height: Int) {
         updateResolution(width, height)
         
