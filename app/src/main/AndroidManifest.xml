@@ -31,11 +31,11 @@
         android:theme="@style/Theme.WebcamViewerNative">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".UsbCameraActivity"
             android:exported="true"
+            android:label="USB Camera"
             android:screenOrientation="unspecified"
-            android:configChanges="orientation|screenSize|screenLayout"
-            android:launchMode="singleTop">
+            android:theme="@style/Theme.WebcamViewerNative">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

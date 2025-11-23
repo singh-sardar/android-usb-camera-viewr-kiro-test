@@ -6,7 +6,7 @@ import java.util.*
 
 object AppLogger {
     private val logs = mutableListOf<LogEntry>()
-    private val maxLogs = 500
+    private val maxLogs = 50
     private val dateFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
     
     data class LogEntry(

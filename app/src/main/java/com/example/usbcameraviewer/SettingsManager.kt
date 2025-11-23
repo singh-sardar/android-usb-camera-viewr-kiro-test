@@ -3,6 +3,16 @@ package com.example.usbcameraviewer
 import android.content.Context
 import android.content.SharedPreferences
 
+data class CameraConfig(
+    val deviceName: String = "",
+    val width: Int = 1920,
+    val height: Int = 1080,
+    val fps: Int = 30,
+    val rotation: Int = 0,
+    val flipHorizontal: Boolean = false,
+    val flipVertical: Boolean = false
+)
+
 class SettingsManager(context: Context) {
     
     private val prefs: SharedPreferences = context.getSharedPreferences(

@@ -8,7 +8,6 @@ android {
     namespace = "com.example.usbcameraviewer"
     compileSdk = 34
 
-
     defaultConfig {
         applicationId = "com.example.usbcameraviewer"
         minSdk = 21 // Android 5.0 for maximum compatibility
@@ -19,11 +18,16 @@ android {
         
         // Support for different screen sizes and densities
         vectorDrawables.useSupportLibrary = true
+        
+        // Only include ARM architectures to reduce APK size
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false  // Disable for better compatibility
+            isMinifyEnabled = false // Disable for better compatibility
             isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -49,6 +53,8 @@ android {
         compose = true
         viewBinding = true
     }
+    
+
     
     packaging {
         resources {
@@ -90,8 +96,15 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
-    // JavaCV for direct USB camera access via V4L2
-    implementation("org.bytedeco:javacv-platform:1.5.9")
+    // FINAL FIX: Rolling back to stable version 3.2.7 and using the fully-qualified 
+    // Group ID that JitPack requires for internal modules. This should bypass the build failure 
+    // and the 401 transitive resolution error.
+    val uvcCameraVersion = "3.2.7"
+    implementation("com.github.jiangdongguo.AndroidUSBCamera:libausbc:$uvcCameraVersion") // Main module
+    implementation("com.github.jiangdongguo.AndroidUSBCamera:libuvc:$uvcCameraVersion") // Transitive module
+    implementation("com.github.jiangdongguo.AndroidUSBCamera:libnative:$uvcCameraVersion") // Transitive module
+    implementation("com.github.jiangdongguo.AndroidUSBCamera:libuvccommon:$uvcCameraVersion") // Transitive module
+
 
     // --- Testing Dependencies ---
     testImplementation("junit:junit:4.13.2")
