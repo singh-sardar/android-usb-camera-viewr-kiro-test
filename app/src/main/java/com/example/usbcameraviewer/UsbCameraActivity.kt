@@ -5,6 +5,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.jiangdg.ausbc.CameraClient
@@ -24,6 +25,9 @@ class UsbCameraActivity : AppCompatActivity() {
         setTheme(R.style.Theme_WebcamViewerNative)
         
         super.onCreate(savedInstanceState)
+        
+        // Keep screen on - prevents screensaver/ambient mode
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
