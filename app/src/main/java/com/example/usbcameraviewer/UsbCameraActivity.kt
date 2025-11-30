@@ -78,6 +78,8 @@ class UsbCameraFragment : CameraFragment() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
+            // Enable hardware acceleration for container
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
         }
         mainLayout.addView(cameraContainer)
         
@@ -389,7 +391,10 @@ class UsbCameraFragment : CameraFragment() {
     
     override fun getCameraView(): IAspectRatio {
         if (cameraView == null) {
-            cameraView = AspectRatioTextureView(requireContext())
+            cameraView = AspectRatioTextureView(requireContext()).apply {
+                // Enable hardware acceleration for better performance
+                setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            }
         }
         return cameraView!!
     }
@@ -401,9 +406,9 @@ class UsbCameraFragment : CameraFragment() {
         val config = settingsManager?.loadConfig() ?: CameraConfig()
         
         return CameraClient.newBuilder(requireContext())
-            .setEnableGLES(true)
-            .setRawImage(false)
-            .openDebug(true)
+            .setEnableGLES(true)  // Hardware-accelerated OpenGL ES rendering
+            .setRawImage(false)   // Use compressed format for better performance
+            .openDebug(false)     // Disable debug for production performance
             .setCameraStrategy(CameraUvcStrategy(requireContext()))
             .setCameraRequest(
                 CameraRequest.Builder()
@@ -530,20 +535,43 @@ class UsbCameraFragment : CameraFragment() {
     
     /**
      * Changes camera resolution and saves to settings
+     * Optimizes FPS for high resolutions to prevent lag
      */
     private fun changeResolution(width: Int, height: Int) {
+        // Auto-adjust FPS for high resolutions to prevent lag
+        val optimalFps = when {
+            width >= 3840 -> 15  // 4K: use 15fps for stability
+            width >= 2560 -> 24  // 2K: use 24fps
+            width >= 1920 -> 30  // 1080p: use 30fps
+            else -> 30           // Lower resolutions: 30fps
+        }
+        
+        // Update FPS spinner to match optimal setting
+        val fpsText = optimalFps.toString()
+        for (i in 0 until fpsSpinner.count) {
+            if (fpsSpinner.getItemAtPosition(i).toString() == fpsText) {
+                fpsSpinner.setSelection(i)
+                break
+            }
+        }
+        
         updateResolution(width, height)
         
         val config = settingsManager?.loadConfig() ?: CameraConfig()
-        settingsManager?.saveConfig(config.copy(width = width, height = height))
+        settingsManager?.saveConfig(config.copy(width = width, height = height, fps = optimalFps))
         
-        statusText.text = "✓ ${width}x${height}"
+        statusText.text = "✓ ${width}x${height} @ ${optimalFps}fps"
         statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+        
+        // Show performance tip for 4K
+        if (width >= 3840) {
+            Toast.makeText(requireContext(), "4K mode: Using 15fps for optimal performance", Toast.LENGTH_LONG).show()
+        }
     }
     
     private fun applyBestConfig() {
-        // Set 720p @ 30fps (most compatible)
-        resolutionSpinner.setSelection(1) // 1280x720
+        // Set 1080p @ 30fps (best balance of quality and performance)
+        resolutionSpinner.setSelection(2) // 1920x1080
         fpsSpinner.setSelection(2) // 30fps
         rotationSpinner.setSelection(0) // 0°
         flipHorizontalCheck.isChecked = false
@@ -554,7 +582,7 @@ class UsbCameraFragment : CameraFragment() {
         contrastSeek.progress = contrastSeek.max / 2
         saturationSeek.progress = saturationSeek.max / 2
         
-        Toast.makeText(requireContext(), "✓ Applied best configuration", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "✓ Applied best configuration (1080p@30fps)", Toast.LENGTH_SHORT).show()
     }
     
     private fun applyTransform() {
