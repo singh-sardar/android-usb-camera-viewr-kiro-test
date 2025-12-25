@@ -1,5 +1,7 @@
 package com.example.usbcameraviewer
 
+import android.content.Intent
+import android.hardware.usb.UsbDevice
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -20,6 +22,9 @@ import com.jiangdg.ausbc.widget.IAspectRatio
  * Hosts the camera fragment and handles lifecycle
  */
 class UsbCameraActivity : AppCompatActivity() {
+    
+    private lateinit var usbPermissionManager: UsbPermissionManager
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         // Switch from splash theme to normal theme
         setTheme(R.style.Theme_WebcamViewerNative)
@@ -29,10 +34,71 @@ class UsbCameraActivity : AppCompatActivity() {
         // Keep screen on - prevents screensaver/ambient mode
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
+        // Initialize USB permission manager
+        usbPermissionManager = UsbPermissionManager(this)
+        
+        // Handle USB device attached intent
+        handleUsbDeviceIntent(intent)
+        
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
                 .replace(android.R.id.content, UsbCameraFragment())
                 .commit()
+        }
+    }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleUsbDeviceIntent(intent)
+    }
+    
+    private fun handleUsbDeviceIntent(intent: Intent) {
+        if (intent.action == "android.hardware.usb.action.USB_DEVICE_ATTACHED") {
+            val device = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra("device", UsbDevice::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<UsbDevice>("device")
+            }
+            device?.let { usbDevice ->
+                // Check if this is a camera and handle permission
+                if (isUvcCamera(usbDevice)) {
+                    handleCameraPermission(usbDevice)
+                }
+            }
+        }
+    }
+    
+    private fun isUvcCamera(device: UsbDevice): Boolean {
+        for (i in 0 until device.interfaceCount) {
+            val intf = device.getInterface(i)
+            if (intf.interfaceClass == 14) { // USB_CLASS_VIDEO
+                return true
+            }
+        }
+        return false
+    }
+    
+    private fun handleCameraPermission(device: UsbDevice) {
+        usbPermissionManager.requestPermission(device) { granted ->
+            if (granted) {
+                // Permission granted, camera fragment will handle the rest
+                android.util.Log.d("UsbCameraActivity", "USB camera permission granted")
+            } else {
+                // Show user-friendly message
+                Toast.makeText(
+                    this, 
+                    "USB camera permission denied. Please grant permission to use the camera.", 
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::usbPermissionManager.isInitialized) {
+            usbPermissionManager.cleanup()
         }
     }
 }
@@ -61,10 +127,12 @@ class UsbCameraFragment : CameraFragment() {
     private lateinit var brightnessSeek: SeekBar
     private lateinit var contrastSeek: SeekBar
     private lateinit var saturationSeek: SeekBar
+    private lateinit var alwaysAllowUsbCheck: CheckBox
     
     // Camera and Settings
     private var cameraView: AspectRatioTextureView? = null
     private var settingsManager: SettingsManager? = null
+    private var usbPermissionManager: UsbPermissionManager? = null
     
     override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View {
         mainLayout = FrameLayout(requireContext()).apply {
@@ -265,6 +333,31 @@ class UsbCameraFragment : CameraFragment() {
         contrastSeek = createSeekBar("Contrast", -100, 100)
         saturationSeek = createSeekBar("Saturation", -100, 100)
         
+        // USB Permission Settings
+        sidebarLayout.addView(TextView(requireContext()).apply {
+            text = "USB PERMISSIONS"
+            setTextColor(android.graphics.Color.parseColor("#757575"))
+            textSize = 12f
+            setPadding(0, 16, 0, 8)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
+        
+        alwaysAllowUsbCheck = CheckBox(requireContext()).apply {
+            text = "Always allow USB cameras (no more popups)"
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            setPadding(8, 8, 8, 8)
+            setOnCheckedChangeListener { _, isChecked ->
+                usbPermissionManager?.setAlwaysAllow(isChecked)
+                val message = if (isChecked) {
+                    "✓ USB cameras will be allowed automatically"
+                } else {
+                    "USB permission will be requested for each camera"
+                }
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            }
+        }
+        sidebarLayout.addView(alwaysAllowUsbCheck)
+        
         // Logs button
         sidebarLayout.addView(Button(requireContext()).apply {
             text = "📋 View Logs"
@@ -278,7 +371,7 @@ class UsbCameraFragment : CameraFragment() {
                 setMargins(0, 16, 0, 0)
             }
             setOnClickListener {
-                startActivity(android.content.Intent(requireContext(), LogViewerActivity::class.java))
+                startActivity(Intent(requireContext(), LogViewerActivity::class.java))
             }
         })
         
@@ -421,37 +514,30 @@ class UsbCameraFragment : CameraFragment() {
     
     override fun initData() {
         super.initData()
+        
+        // Initialize USB permission manager
+        usbPermissionManager = UsbPermissionManager(requireContext())
+        
         setupSpinners()
         loadSavedConfig()
         updateCameraList()
+        
+        // Load USB permission preference
+        alwaysAllowUsbCheck.isChecked = usbPermissionManager?.isAlwaysAllowEnabled() ?: false
+        
         statusText.text = "✓ Ready - Connect USB camera"
         statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
     }
     
     private fun updateCameraList() {
-        val usbManager = requireContext().getSystemService(android.content.Context.USB_SERVICE) as android.hardware.usb.UsbManager
-        val deviceList = usbManager.deviceList
+        val cameras = usbPermissionManager?.getConnectedCameras() ?: emptyList()
         
         val cameraNames = mutableListOf<String>()
-        if (deviceList.isEmpty()) {
+        if (cameras.isEmpty()) {
             cameraNames.add("No cameras detected")
         } else {
-            deviceList.values.forEach { device ->
-                // Check if device is a video class device (UVC camera)
-                var isCamera = false
-                for (i in 0 until device.interfaceCount) {
-                    val intf = device.getInterface(i)
-                    if (intf.interfaceClass == 14) { // USB_CLASS_VIDEO
-                        isCamera = true
-                        break
-                    }
-                }
-                if (isCamera) {
-                    cameraNames.add("${device.productName ?: "USB Camera"} (${device.deviceName})")
-                }
-            }
-            if (cameraNames.isEmpty()) {
-                cameraNames.add("No cameras detected")
+            cameras.forEach { device ->
+                cameraNames.add("${device.productName ?: "USB Camera"} (${device.deviceName})")
             }
         }
         
@@ -631,6 +717,11 @@ class UsbCameraFragment : CameraFragment() {
         val flipStr = if (flipText.isNotEmpty()) " + ${flipText.joinToString(", ")}" else ""
         statusText.text = "✓ ${rotation}°${flipStr}"
         statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        usbPermissionManager?.cleanup()
     }
     
     override fun getGravity(): Int = Gravity.CENTER
