@@ -133,6 +133,7 @@ class UsbCameraFragment : CameraFragment() {
     private var cameraView: AspectRatioTextureView? = null
     private var settingsManager: SettingsManager? = null
     private var usbPermissionManager: UsbPermissionManager? = null
+    private var performanceOptimizer: PerformanceOptimizer? = null
     
     override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View {
         mainLayout = FrameLayout(requireContext()).apply {
@@ -275,6 +276,21 @@ class UsbCameraFragment : CameraFragment() {
             setOnClickListener { applyBestConfig() }
         })
         
+        // Performance mode button
+        sidebarLayout.addView(Button(requireContext()).apply {
+            text = "⚡ 24/7 Stability Mode"
+            setBackgroundColor(android.graphics.Color.parseColor("#4CAF50"))
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(16, 16, 16, 16)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 8, 0, 0)
+            }
+            setOnClickListener { apply24x7Mode() }
+        })
+        
         // Camera selection
         addSpinnerControl("Connected Camera", listOf(
             "No cameras detected"
@@ -357,6 +373,45 @@ class UsbCameraFragment : CameraFragment() {
             }
         }
         sidebarLayout.addView(alwaysAllowUsbCheck)
+        
+        // Performance Monitoring
+        sidebarLayout.addView(TextView(requireContext()).apply {
+            text = "PERFORMANCE"
+            setTextColor(android.graphics.Color.parseColor("#757575"))
+            textSize = 12f
+            setPadding(0, 16, 0, 8)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
+        
+        // Memory usage display
+        val memoryText = TextView(requireContext()).apply {
+            text = "Memory: Calculating..."
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            textSize = 11f
+            setPadding(8, 4, 8, 4)
+        }
+        sidebarLayout.addView(memoryText)
+        
+        // Update memory display periodically
+        val memoryUpdateTimer = java.util.Timer()
+        memoryUpdateTimer.scheduleAtFixedRate(object : java.util.TimerTask() {
+            override fun run() {
+                activity?.runOnUiThread {
+                    val memoryInfo = performanceOptimizer?.getMemoryInfo()
+                    if (memoryInfo != null) {
+                        memoryText.text = "Memory: ${memoryInfo.usedMemoryMB}MB/${memoryInfo.maxMemoryMB}MB (${memoryInfo.memoryPercent}%)"
+                        
+                        // Color code based on usage
+                        val color = when {
+                            memoryInfo.memoryPercent > 80 -> android.graphics.Color.parseColor("#F44336") // Red
+                            memoryInfo.memoryPercent > 60 -> android.graphics.Color.parseColor("#FF9800") // Orange
+                            else -> android.graphics.Color.parseColor("#4CAF50") // Green
+                        }
+                        memoryText.setTextColor(color)
+                    }
+                }
+            }
+        }, 1000, 5000) // Update every 5 seconds
         
         // Logs button
         sidebarLayout.addView(Button(requireContext()).apply {
@@ -487,6 +542,9 @@ class UsbCameraFragment : CameraFragment() {
             cameraView = AspectRatioTextureView(requireContext()).apply {
                 // Enable hardware acceleration for better performance
                 setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                
+                // Optimize for high-resolution video
+                isOpaque = true // Better performance for video
             }
         }
         return cameraView!!
@@ -498,18 +556,32 @@ class UsbCameraFragment : CameraFragment() {
         settingsManager = SettingsManager(requireContext())
         val config = settingsManager?.loadConfig() ?: CameraConfig()
         
-        return CameraClient.newBuilder(requireContext())
-            .setEnableGLES(true)  // Hardware-accelerated OpenGL ES rendering
-            .setRawImage(false)   // Use compressed format for better performance
-            .openDebug(false)     // Disable debug for production performance
-            .setCameraStrategy(CameraUvcStrategy(requireContext()))
-            .setCameraRequest(
-                CameraRequest.Builder()
-                    .setPreviewWidth(config.width)
-                    .setPreviewHeight(config.height)
-                    .create()
-            )
-            .build()
+        // Get optimal settings from performance optimizer
+        val optimizer = performanceOptimizer
+        val optimalSettings = optimizer?.getOptimalCameraSettings(config.width, config.height)
+        
+        android.util.Log.d("UsbCameraFragment", "Creating camera client for ${config.width}x${config.height}@${config.fps}fps")
+        if (optimalSettings != null) {
+            android.util.Log.d("UsbCameraFragment", "Optimal settings: ${optimalSettings.fps}fps, ${optimalSettings.bufferFrames} buffer frames")
+        }
+        
+        return try {
+            CameraClient.newBuilder(requireContext())
+                .setEnableGLES(optimalSettings?.useHardwareAcceleration ?: true)
+                .setRawImage(false) // Use compressed format for better performance
+                .openDebug(false) // Disable debug for production performance
+                .setCameraStrategy(CameraUvcStrategy(requireContext()))
+                .setCameraRequest(
+                    CameraRequest.Builder()
+                        .setPreviewWidth(config.width)
+                        .setPreviewHeight(config.height)
+                        .create()
+                )
+                .build()
+        } catch (e: Exception) {
+            android.util.Log.e("UsbCameraFragment", "Failed to create camera client", e)
+            null
+        }
     }
     
     override fun initData() {
@@ -517,6 +589,10 @@ class UsbCameraFragment : CameraFragment() {
         
         // Initialize USB permission manager
         usbPermissionManager = UsbPermissionManager(requireContext())
+        
+        // Initialize performance optimizer for 24/7 operation
+        performanceOptimizer = PerformanceOptimizer(requireContext())
+        performanceOptimizer?.startOptimization()
         
         setupSpinners()
         loadSavedConfig()
@@ -621,15 +697,32 @@ class UsbCameraFragment : CameraFragment() {
     
     /**
      * Changes camera resolution and saves to settings
-     * Optimizes FPS for high resolutions to prevent lag
+     * Uses performance optimizer for optimal settings
      */
     private fun changeResolution(width: Int, height: Int) {
-        // Auto-adjust FPS for high resolutions to prevent lag
-        val optimalFps = when {
-            width >= 3840 -> 15  // 4K: use 15fps for stability
-            width >= 2560 -> 24  // 2K: use 24fps
-            width >= 1920 -> 30  // 1080p: use 30fps
-            else -> 30           // Lower resolutions: 30fps
+        val optimizer = performanceOptimizer ?: return
+        val optimalSettings = optimizer.getOptimalCameraSettings(width, height)
+        
+        // Use optimized FPS from performance optimizer
+        val optimalFps = optimalSettings.fps
+        
+        // Check if device can handle the resolution
+        val canHandle = when {
+            width >= 3840 -> optimizer.canHandle4K()
+            width >= 2560 -> optimizer.canHandle2K()
+            else -> true
+        }
+        
+        if (!canHandle) {
+            val fallbackRes = when {
+                width >= 3840 -> "2K (2560x1440)" // Fallback from 4K to 2K
+                width >= 2560 -> "1080p (1920x1080)" // Fallback from 2K to 1080p
+                else -> "Current resolution"
+            }
+            
+            Toast.makeText(requireContext(), 
+                "Device may not handle this resolution well. Consider using $fallbackRes", 
+                Toast.LENGTH_LONG).show()
         }
         
         // Update FPS spinner to match optimal setting
@@ -646,12 +739,29 @@ class UsbCameraFragment : CameraFragment() {
         val config = settingsManager?.loadConfig() ?: CameraConfig()
         settingsManager?.saveConfig(config.copy(width = width, height = height, fps = optimalFps))
         
-        statusText.text = "✓ ${width}x${height} @ ${optimalFps}fps"
+        // Show performance info
+        val resolutionName = when {
+            width >= 3840 -> "4K"
+            width >= 2560 -> "2K" 
+            width >= 1920 -> "1080p"
+            else -> "720p"
+        }
+        
+        statusText.text = "✓ $resolutionName (${width}x${height}) @ ${optimalFps}fps"
         statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
         
-        // Show performance tip for 4K
-        if (width >= 3840) {
-            Toast.makeText(requireContext(), "4K mode: Using 15fps for optimal performance", Toast.LENGTH_LONG).show()
+        // Show optimization info for high resolutions
+        when {
+            width >= 3840 -> {
+                Toast.makeText(requireContext(), 
+                    "4K mode: Optimized for stability (${optimalFps}fps, ${optimalSettings.bufferFrames} frame buffer)", 
+                    Toast.LENGTH_LONG).show()
+            }
+            width >= 2560 -> {
+                Toast.makeText(requireContext(), 
+                    "2K mode: Balanced performance (${optimalFps}fps)", 
+                    Toast.LENGTH_SHORT).show()
+            }
         }
     }
     
@@ -669,6 +779,51 @@ class UsbCameraFragment : CameraFragment() {
         saturationSeek.progress = saturationSeek.max / 2
         
         Toast.makeText(requireContext(), "✓ Applied best configuration (1080p@30fps)", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun apply24x7Mode() {
+        val optimizer = performanceOptimizer ?: return
+        
+        // Get current resolution
+        val config = settingsManager?.loadConfig() ?: CameraConfig()
+        
+        // Apply 24/7 optimized settings
+        val optimalSettings = optimizer.getOptimalCameraSettings(config.width, config.height)
+        
+        // Set conservative settings for 24/7 operation
+        val stableFps = when {
+            config.width >= 3840 -> 10 // Very conservative for 4K
+            config.width >= 2560 -> 15 // Conservative for 2K
+            config.width >= 1920 -> 24 // Stable for 1080p
+            else -> 30 // Standard for lower resolutions
+        }
+        
+        // Update FPS spinner
+        val fpsText = stableFps.toString()
+        for (i in 0 until fpsSpinner.count) {
+            if (fpsSpinner.getItemAtPosition(i).toString() == fpsText) {
+                fpsSpinner.setSelection(i)
+                break
+            }
+        }
+        
+        // Save configuration
+        settingsManager?.saveConfig(config.copy(fps = stableFps))
+        
+        // Update status
+        val resolutionName = when {
+            config.width >= 3840 -> "4K"
+            config.width >= 2560 -> "2K"
+            config.width >= 1920 -> "1080p"
+            else -> "720p"
+        }
+        
+        statusText.text = "✓ 24/7 Mode: $resolutionName @ ${stableFps}fps"
+        statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+        
+        Toast.makeText(requireContext(), 
+            "✓ 24/7 stability mode applied (${stableFps}fps, optimized for continuous operation)", 
+            Toast.LENGTH_LONG).show()
     }
     
     private fun applyTransform() {
@@ -721,7 +876,16 @@ class UsbCameraFragment : CameraFragment() {
     
     override fun onDestroy() {
         super.onDestroy()
+        
+        // Stop performance optimizer
+        performanceOptimizer?.stopOptimization()
+        performanceOptimizer = null
+        
+        // Cleanup USB permission manager
         usbPermissionManager?.cleanup()
+        
+        // Final memory cleanup
+        System.gc()
     }
     
     override fun getGravity(): Int = Gravity.CENTER
