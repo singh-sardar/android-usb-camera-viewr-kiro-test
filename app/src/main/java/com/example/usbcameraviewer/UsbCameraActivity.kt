@@ -198,295 +198,191 @@ class UsbCameraFragment : CameraFragment() {
     
     /**
      * Creates the sidebar with all camera controls
-     * Modern design with clean UI
+     * Android TV optimized design with dark theme and clear focus indicators
      */
     private fun createSidebar() {
         sidebarScroll = ScrollView(requireContext()).apply {
-            setBackgroundColor(android.graphics.Color.parseColor("#F5F5F5"))
+            // Dark theme background for Android TV
+            setBackgroundColor(android.graphics.Color.parseColor("#1E1E1E"))
             layoutParams = FrameLayout.LayoutParams(
-                (320 * resources.displayMetrics.density).toInt(),
+                (380 * resources.displayMetrics.density).toInt(), // Wider for TV
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 Gravity.END
             )
             visibility = View.GONE
-            elevation = 8f
+            elevation = 12f
+            
+            // TV-friendly scrolling
+            isVerticalScrollBarEnabled = true
+            scrollBarStyle = View.SCROLLBARS_OUTSIDE_OVERLAY
         }
         
         sidebarLayout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 24, 24, 24)
+            setPadding(32, 32, 32, 32) // Larger padding for TV
+            setBackgroundColor(android.graphics.Color.parseColor("#1E1E1E"))
         }
         
-        // Status text (moved from overlay)
+        // Status text with better contrast
         statusText = TextView(requireContext()).apply {
             text = "Initializing..."
-            setTextColor(android.graphics.Color.parseColor("#666666"))
-            textSize = 12f
-            setPadding(0, 0, 0, 16)
+            setTextColor(android.graphics.Color.parseColor("#FFFFFF")) // White text
+            textSize = 16f // Larger for TV
+            setPadding(0, 0, 0, 24)
             gravity = Gravity.CENTER
+            setBackgroundColor(android.graphics.Color.parseColor("#2D2D2D"))
+            setPadding(16, 12, 16, 12)
         }
         sidebarLayout.addView(statusText)
         
-        // Divider
+        // Divider with better visibility
         sidebarLayout.addView(View(requireContext()).apply {
-            setBackgroundColor(android.graphics.Color.parseColor("#E0E0E0"))
+            setBackgroundColor(android.graphics.Color.parseColor("#404040"))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                2
+                4 // Thicker divider
             ).apply {
-                setMargins(0, 0, 0, 16)
+                setMargins(0, 0, 0, 24)
             }
         })
         
-        // Header with title and close button
+        // Header with title and close button - TV optimized
         val headerLayout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 20)
+            setPadding(0, 0, 0, 32)
+            setBackgroundColor(android.graphics.Color.parseColor("#2D2D2D"))
+            setPadding(20, 16, 20, 16)
         }
         
         headerLayout.addView(TextView(requireContext()).apply {
-            text = "Settings"
-            setTextColor(android.graphics.Color.parseColor("#212121"))
-            textSize = 20f
+            text = "📹 Camera Settings"
+            setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+            textSize = 24f // Large title for TV
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
         
-        headerLayout.addView(Button(requireContext()).apply {
-            text = "✕"
-            textSize = 20f
-            setBackgroundColor(android.graphics.Color.parseColor("#E0E0E0"))
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            val size = (40 * resources.displayMetrics.density).toInt()
-            layoutParams = LinearLayout.LayoutParams(size, size)
-            setPadding(0, 0, 0, 0)
-            
-            // Make it circular
-            post {
-                val drawable = android.graphics.drawable.GradientDrawable()
-                drawable.shape = android.graphics.drawable.GradientDrawable.OVAL
-                drawable.setColor(android.graphics.Color.parseColor("#E0E0E0"))
-                background = drawable
-            }
-            
-            setOnClickListener { toggleSidebar() }
+        headerLayout.addView(createTVButton("✕ CLOSE", "#E53E3E") {
+            toggleSidebar()
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(
+                (120 * resources.displayMetrics.density).toInt(),
+                (48 * resources.displayMetrics.density).toInt()
+            )
         })
         
         sidebarLayout.addView(headerLayout)
         
-        // Auto config button (modern style)
-        sidebarLayout.addView(Button(requireContext()).apply {
-            text = "🎯 Auto Best Config"
-            setBackgroundColor(android.graphics.Color.parseColor("#2196F3"))
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(16, 16, 16, 16)
-            setOnClickListener { applyBestConfig() }
+        // Quick action buttons - TV optimized
+        sidebarLayout.addView(createTVSectionHeader("QUICK ACTIONS"))
+        
+        // Auto config button
+        sidebarLayout.addView(createTVButton("🎯 Auto Best Config", "#2B6CB0") {
+            applyBestConfig()
         })
         
         // Performance mode button
-        sidebarLayout.addView(Button(requireContext()).apply {
-            text = "⚡ Enhanced 24/7 Mode"
-            setBackgroundColor(android.graphics.Color.parseColor("#4CAF50"))
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(16, 16, 16, 16)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 8, 0, 0)
-            }
-            setOnClickListener { apply24x7Mode() }
+        sidebarLayout.addView(createTVButton("⚡ Enhanced 24/7 Mode", "#059669") {
+            apply24x7Mode()
         })
         
         // High quality 24/7 mode button
-        sidebarLayout.addView(Button(requireContext()).apply {
-            text = "💎 Max Quality 24/7"
-            setBackgroundColor(android.graphics.Color.parseColor("#9C27B0"))
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(16, 16, 16, 16)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 8, 0, 0)
-            }
-            setOnClickListener { applyMaxQuality24x7Mode() }
+        sidebarLayout.addView(createTVButton("💎 Max Quality 24/7", "#7C3AED") {
+            applyMaxQuality24x7Mode()
         })
         
         // Ultimate 24/7 mode button
-        sidebarLayout.addView(Button(requireContext()).apply {
-            text = "🚀 ULTIMATE 24/7"
-            setBackgroundColor(android.graphics.Color.parseColor("#E91E63"))
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(16, 16, 16, 16)
-            textSize = 14f
+        sidebarLayout.addView(createTVButton("🚀 ULTIMATE 24/7", "#DC2626") {
+            applyUltimate24x7Mode()
+        }.apply {
+            textSize = 16f
             typeface = android.graphics.Typeface.DEFAULT_BOLD
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 8, 0, 0)
-            }
-            setOnClickListener { applyUltimate24x7Mode() }
         })
         
-        // Camera selection
-        addSpinnerControl("Connected Camera", listOf(
+        // Camera selection section
+        sidebarLayout.addView(createTVSectionHeader("CAMERA"))
+        
+        addTVSpinnerControl("Connected Camera", listOf(
             "No cameras detected"
         )).also { cameraSpinner = it }
         
-        // Resolution
-        addSpinnerControl("Resolution", listOf(
+        // Video settings section
+        sidebarLayout.addView(createTVSectionHeader("VIDEO SETTINGS"))
+        
+        addTVSpinnerControl("Resolution", listOf(
             "640x480", "1280x720", "1920x1080", "2560x1440", "3840x2160"
         )).also { resolutionSpinner = it }
         
-        // FPS
-        addSpinnerControl("FPS", listOf(
+        addTVSpinnerControl("FPS", listOf(
             "15", "24", "30", "60"
         )).also { fpsSpinner = it }
         
-        // Rotation
-        addSpinnerControl("Rotation", listOf(
+        addTVSpinnerControl("Rotation", listOf(
             "0°", "90°", "180°", "270°"
         )).also { rotationSpinner = it }
         
-        // Flip controls
-        sidebarLayout.addView(TextView(requireContext()).apply {
-            text = "FLIP"
-            setTextColor(android.graphics.Color.parseColor("#757575"))
-            textSize = 12f
-            setPadding(0, 16, 0, 8)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-        })
+        // Transform controls section
+        sidebarLayout.addView(createTVSectionHeader("TRANSFORM"))
         
-        flipHorizontalCheck = CheckBox(requireContext()).apply {
-            text = "Horizontal"
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            setPadding(8, 8, 8, 8)
-            setOnCheckedChangeListener { _, _ -> applyTransform() }
+        flipHorizontalCheck = createTVCheckBox("↔️ Horizontal Flip") { _, _ -> 
+            applyTransform() 
         }
         sidebarLayout.addView(flipHorizontalCheck)
         
-        flipVerticalCheck = CheckBox(requireContext()).apply {
-            text = "Vertical"
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            setPadding(8, 8, 8, 8)
-            setOnCheckedChangeListener { _, _ -> applyTransform() }
+        flipVerticalCheck = createTVCheckBox("↕️ Vertical Flip") { _, _ -> 
+            applyTransform() 
         }
         sidebarLayout.addView(flipVerticalCheck)
         
-        // Camera controls
-        sidebarLayout.addView(TextView(requireContext()).apply {
-            text = "ADJUSTMENTS"
-            setTextColor(android.graphics.Color.parseColor("#757575"))
-            textSize = 12f
-            setPadding(0, 16, 0, 8)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-        })
+        // Camera controls section
+        sidebarLayout.addView(createTVSectionHeader("ADJUSTMENTS"))
         
-        brightnessSeek = createSeekBar("Brightness", -100, 100)
-        contrastSeek = createSeekBar("Contrast", -100, 100)
-        saturationSeek = createSeekBar("Saturation", -100, 100)
+        brightnessSeek = createTVSeekBar("☀️ Brightness", -100, 100)
+        contrastSeek = createTVSeekBar("🔆 Contrast", -100, 100)
+        saturationSeek = createTVSeekBar("🎨 Saturation", -100, 100)
         
-        // USB Permission Settings
-        sidebarLayout.addView(TextView(requireContext()).apply {
-            text = "USB PERMISSIONS"
-            setTextColor(android.graphics.Color.parseColor("#757575"))
-            textSize = 12f
-            setPadding(0, 16, 0, 8)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-        })
+        // USB Permission section
+        sidebarLayout.addView(createTVSectionHeader("USB PERMISSIONS"))
         
-        alwaysAllowUsbCheck = CheckBox(requireContext()).apply {
-            text = "Always allow USB cameras (no more popups)"
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            setPadding(8, 8, 8, 8)
-            setOnCheckedChangeListener { _, isChecked ->
-                usbPermissionManager?.setAlwaysAllow(isChecked)
-                val message = if (isChecked) {
-                    "✓ USB cameras will be allowed automatically"
-                } else {
-                    "USB permission will be requested for each camera"
-                }
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        alwaysAllowUsbCheck = createTVCheckBox("🔓 Always allow USB cameras (no more popups)") { _, isChecked ->
+            usbPermissionManager?.setAlwaysAllow(isChecked)
+            val message = if (isChecked) {
+                "✓ USB cameras will be allowed automatically"
+            } else {
+                "USB permission will be requested for each camera"
             }
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
         sidebarLayout.addView(alwaysAllowUsbCheck)
         
-        // Manual permission renewal button for troubleshooting
-        sidebarLayout.addView(Button(requireContext()).apply {
-            text = "🔄 Renew USB Permission"
-            setBackgroundColor(android.graphics.Color.parseColor("#FF9800"))
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(12, 12, 12, 12)
-            textSize = 12f
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 8, 0, 0)
-            }
-            setOnClickListener {
-                usbConnectionMonitor?.renewCurrentCameraPermission()
-                Toast.makeText(requireContext(), "Renewing USB camera permission...", Toast.LENGTH_SHORT).show()
-            }
+        // Manual permission renewal button
+        sidebarLayout.addView(createTVButton("🔄 Renew USB Permission", "#F59E0B") {
+            usbConnectionMonitor?.renewCurrentCameraPermission()
+            Toast.makeText(requireContext(), "Renewing USB camera permission...", Toast.LENGTH_SHORT).show()
         })
         
-        // Performance Monitoring
-        sidebarLayout.addView(TextView(requireContext()).apply {
-            text = "PERFORMANCE"
-            setTextColor(android.graphics.Color.parseColor("#757575"))
-            textSize = 12f
-            setPadding(0, 16, 0, 8)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-        })
+        // Performance monitoring section
+        sidebarLayout.addView(createTVSectionHeader("PERFORMANCE"))
         
         // Memory usage display
-        val memoryText = TextView(requireContext()).apply {
-            text = "Memory: Calculating..."
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            textSize = 11f
-            setPadding(8, 4, 8, 4)
-        }
+        val memoryText = createTVInfoText("Memory: Calculating...")
         sidebarLayout.addView(memoryText)
         
         // Connection status display
-        val connectionStatusText = TextView(requireContext()).apply {
-            text = "USB Status: Checking..."
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            textSize = 11f
-            setPadding(8, 4, 8, 4)
-        }
+        val connectionStatusText = createTVInfoText("USB Status: Checking...")
         sidebarLayout.addView(connectionStatusText)
         
         // Device capability display
-        val deviceCapabilityText = TextView(requireContext()).apply {
-            text = "Device: Analyzing..."
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            textSize = 11f
-            setPadding(8, 4, 8, 4)
-        }
+        val deviceCapabilityText = createTVInfoText("Device: Analyzing...")
         sidebarLayout.addView(deviceCapabilityText)
         
         // Performance statistics display
-        val performanceStatsText = TextView(requireContext()).apply {
-            text = "Performance: Initializing..."
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            textSize = 10f
-            setPadding(8, 4, 8, 4)
-            maxLines = 2
-        }
+        val performanceStatsText = createTVInfoText("Performance: Initializing...")
         sidebarLayout.addView(performanceStatsText)
         
         // Hardware acceleration display
-        val hardwareAccelText = TextView(requireContext()).apply {
-            text = "Hardware: Analyzing..."
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            textSize = 10f
-            setPadding(8, 4, 8, 4)
-            maxLines = 2
-        }
+        val hardwareAccelText = createTVInfoText("Hardware: Analyzing...")
         sidebarLayout.addView(hardwareAccelText)
         
         // Update memory display periodically
@@ -585,46 +481,283 @@ class UsbCameraFragment : CameraFragment() {
             }
         }, 1000, 3000) // Update every 3 seconds
         
-        // Logs button
-        sidebarLayout.addView(Button(requireContext()).apply {
-            text = "📋 View Logs"
-            setBackgroundColor(android.graphics.Color.parseColor("#757575"))
-            setTextColor(android.graphics.Color.WHITE)
-            setPadding(16, 16, 16, 16)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 16, 0, 0)
-            }
-            setOnClickListener {
-                startActivity(Intent(requireContext(), LogViewerActivity::class.java))
-            }
+        // Logs button - TV optimized
+        sidebarLayout.addView(createTVSectionHeader("SYSTEM"))
+        sidebarLayout.addView(createTVButton("📋 View System Logs", "#6B7280") {
+            startActivity(Intent(requireContext(), LogViewerActivity::class.java))
         })
         
         sidebarScroll.addView(sidebarLayout)
         mainLayout.addView(sidebarScroll)
     }
     
-    private fun addSpinnerControl(label: String, items: List<String>): Spinner {
-        sidebarLayout.addView(TextView(requireContext()).apply {
-            text = label
-            setTextColor(android.graphics.Color.parseColor("#757575"))
-            textSize = 12f
-            setPadding(0, 16, 0, 8)
+    /**
+     * Create TV-optimized section header
+     */
+    private fun createTVSectionHeader(title: String): TextView {
+        return TextView(requireContext()).apply {
+            text = title
+            setTextColor(android.graphics.Color.parseColor("#60A5FA")) // Light blue
+            textSize = 14f
+            setPadding(0, 24, 0, 12)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+            setPadding(16, 8, 16, 8)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 16, 0, 8)
+            }
+        }
+    }
+    
+    /**
+     * Create TV-optimized button with focus handling
+     */
+    private fun createTVButton(text: String, color: String, onClick: () -> Unit): Button {
+        return Button(requireContext()).apply {
+            this.text = text
+            setBackgroundColor(android.graphics.Color.parseColor(color))
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 14f
+            setPadding(20, 16, 20, 16)
+            
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (56 * resources.displayMetrics.density).toInt()
+            ).apply {
+                setMargins(0, 8, 0, 8)
+            }
+            
+            // TV focus handling
+            isFocusable = true
+            isFocusableInTouchMode = true
+            
+            // Focus state drawable
+            post {
+                val drawable = android.graphics.drawable.StateListDrawable()
+                
+                // Focused state
+                val focusedDrawable = android.graphics.drawable.GradientDrawable()
+                focusedDrawable.setColor(android.graphics.Color.parseColor(color))
+                focusedDrawable.setStroke(6, android.graphics.Color.parseColor("#FFFFFF"))
+                focusedDrawable.cornerRadius = 8f
+                drawable.addState(intArrayOf(android.R.attr.state_focused), focusedDrawable)
+                
+                // Normal state
+                val normalDrawable = android.graphics.drawable.GradientDrawable()
+                normalDrawable.setColor(android.graphics.Color.parseColor(color))
+                normalDrawable.cornerRadius = 8f
+                drawable.addState(intArrayOf(), normalDrawable)
+                
+                background = drawable
+            }
+            
+            setOnClickListener { onClick() }
+        }
+    }
+    
+    /**
+     * Create TV-optimized checkbox with better visibility
+     */
+    private fun createTVCheckBox(text: String, onCheckedChange: (android.widget.CompoundButton, Boolean) -> Unit): CheckBox {
+        return CheckBox(requireContext()).apply {
+            this.text = text
+            setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+            textSize = 14f
+            setPadding(16, 16, 16, 16)
+            
+            // Dark background for better contrast
+            setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+            
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 8, 0, 8)
+            }
+            
+            // TV focus handling
+            isFocusable = true
+            isFocusableInTouchMode = true
+            
+            // Focus state
+            setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    setBackgroundColor(android.graphics.Color.parseColor("#4B5563"))
+                } else {
+                    setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+                }
+            }
+            
+            setOnCheckedChangeListener(onCheckedChange)
+        }
+    }
+    
+    /**
+     * Create TV-optimized info text with better contrast
+     */
+    private fun createTVInfoText(text: String): TextView {
+        return TextView(requireContext()).apply {
+            this.text = text
+            setTextColor(android.graphics.Color.parseColor("#D1D5DB")) // Light gray
+            textSize = 12f
+            setPadding(16, 8, 16, 8)
+            setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+            
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 4, 0, 4)
+            }
+        }
+    }
+    
+    /**
+     * Create TV-optimized spinner control with better visibility and focus
+     */
+    private fun addTVSpinnerControl(label: String, items: List<String>): Spinner {
+        sidebarLayout.addView(TextView(requireContext()).apply {
+            text = "📋 $label"
+            setTextColor(android.graphics.Color.parseColor("#D1D5DB"))
+            textSize = 13f
+            setPadding(16, 12, 16, 8)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setBackgroundColor(android.graphics.Color.parseColor("#4B5563"))
         })
         
         val spinner = Spinner(requireContext()).apply {
-            setPadding(12, 12, 12, 12)
-            setBackgroundColor(android.graphics.Color.WHITE)
+            setPadding(20, 16, 20, 16)
+            setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+            
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (48 * resources.displayMetrics.density).toInt()
+            ).apply {
+                setMargins(0, 4, 0, 12)
+            }
+            
+            // TV focus handling
+            isFocusable = true
+            isFocusableInTouchMode = true
+            
+            // Focus state
+            setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    setBackgroundColor(android.graphics.Color.parseColor("#1F2937"))
+                } else {
+                    setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+                }
+            }
         }
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, items)
+        
+        // Create TV-optimized adapter
+        val adapter = object : ArrayAdapter<String>(requireContext(), android.R.layout.simple_spinner_item, items) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent) as TextView
+                view.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+                view.textSize = 14f
+                view.setPadding(16, 12, 16, 12)
+                return view
+            }
+            
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getDropDownView(position, convertView, parent) as TextView
+                view.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+                view.setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+                view.textSize = 14f
+                view.setPadding(20, 16, 20, 16)
+                return view
+            }
+        }
+        
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = adapter
         sidebarLayout.addView(spinner)
         
         return spinner
+    }
+    
+    /**
+     * Create TV-optimized seekbar with better visibility and larger touch targets
+     */
+    private fun createTVSeekBar(label: String, min: Int, max: Int): SeekBar {
+        val layout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, 16, 16, 16)
+            setBackgroundColor(android.graphics.Color.parseColor("#374151"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 8, 0, 8)
+            }
+        }
+        
+        // Label and value row
+        val labelRow = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        
+        labelRow.addView(TextView(requireContext()).apply {
+            text = label
+            setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+            textSize = 14f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        
+        val valueText = TextView(requireContext()).apply {
+            text = "0"
+            setTextColor(android.graphics.Color.parseColor("#60A5FA"))
+            textSize = 16f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = Gravity.END
+            minWidth = (60 * resources.displayMetrics.density).toInt()
+        }
+        labelRow.addView(valueText)
+        
+        layout.addView(labelRow)
+        
+        val seekBar = SeekBar(requireContext()).apply {
+            this.max = max - min
+            progress = -min
+            
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                (48 * resources.displayMetrics.density).toInt()
+            ).apply {
+                setMargins(0, 12, 0, 0)
+            }
+            
+            // TV focus handling
+            isFocusable = true
+            isFocusableInTouchMode = true
+            
+            // Larger thumb for TV
+            thumb?.let { thumb ->
+                val size = (24 * resources.displayMetrics.density).toInt()
+                thumb.setBounds(0, 0, size, size)
+            }
+        }
+        
+        layout.addView(seekBar)
+        
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seek: SeekBar?, progress: Int, fromUser: Boolean) {
+                val value = progress + min
+                valueText.text = value.toString()
+                if (fromUser) applyCameraControl(label.replace("🔆", "").replace("☀️", "").replace("🎨", "").trim(), value)
+            }
+            override fun onStartTrackingTouch(seek: SeekBar?) {}
+            override fun onStopTrackingTouch(seek: SeekBar?) {}
+        })
+        
+        sidebarLayout.addView(layout)
+        return seekBar
     }
     
     private fun toggleSidebar() {
@@ -663,50 +796,6 @@ class UsbCameraFragment : CameraFragment() {
                 .setDuration(250)
                 .start()
         }
-    }
-    
-    private fun createSeekBar(label: String, min: Int, max: Int): SeekBar {
-        val layout = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 12, 0, 12)
-        }
-        
-        layout.addView(TextView(requireContext()).apply {
-            text = label
-            setTextColor(android.graphics.Color.parseColor("#424242"))
-            textSize = 13f
-            layoutParams = LinearLayout.LayoutParams(90, LinearLayout.LayoutParams.WRAP_CONTENT)
-        })
-        
-        val seekBar = SeekBar(requireContext()).apply {
-            this.max = max - min
-            progress = -min
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        layout.addView(seekBar)
-        
-        val valueText = TextView(requireContext()).apply {
-            text = "0"
-            setTextColor(android.graphics.Color.parseColor("#2196F3"))
-            textSize = 13f
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            layoutParams = LinearLayout.LayoutParams(45, LinearLayout.LayoutParams.WRAP_CONTENT)
-            gravity = Gravity.END
-        }
-        layout.addView(valueText)
-        
-        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seek: SeekBar?, progress: Int, fromUser: Boolean) {
-                val value = progress + min
-                valueText.text = value.toString()
-                if (fromUser) applyCameraControl(label, value)
-            }
-            override fun onStartTrackingTouch(seek: SeekBar?) {}
-            override fun onStopTrackingTouch(seek: SeekBar?) {}
-        })
-        
-        sidebarLayout.addView(layout)
-        return seekBar
     }
     
     override fun getCameraView(): IAspectRatio {
