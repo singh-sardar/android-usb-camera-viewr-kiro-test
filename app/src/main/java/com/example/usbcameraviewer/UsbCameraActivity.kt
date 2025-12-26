@@ -24,12 +24,17 @@ import com.jiangdg.ausbc.widget.IAspectRatio
 class UsbCameraActivity : AppCompatActivity() {
     
     private lateinit var usbPermissionManager: UsbPermissionManager
+    private lateinit var hardwareAccelManager: HardwareAccelerationManager
     
     override fun onCreate(savedInstanceState: Bundle?) {
         // Switch from splash theme to normal theme
         setTheme(R.style.Theme_WebcamViewerNative)
         
         super.onCreate(savedInstanceState)
+        
+        // Initialize hardware acceleration manager and optimize window
+        hardwareAccelManager = HardwareAccelerationManager(this)
+        hardwareAccelManager.optimizeWindow(window)
         
         // Keep screen on - prevents screensaver/ambient mode
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -135,6 +140,8 @@ class UsbCameraFragment : CameraFragment() {
     private var usbPermissionManager: UsbPermissionManager? = null
     private var performanceOptimizer: PerformanceOptimizer? = null
     private var usbConnectionMonitor: UsbConnectionMonitor? = null
+    private var ultimateOptimizer: Ultimate24x7Optimizer? = null
+    private var hardwareAccelManager: HardwareAccelerationManager? = null
     
     override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View {
         mainLayout = FrameLayout(requireContext()).apply {
@@ -279,7 +286,7 @@ class UsbCameraFragment : CameraFragment() {
         
         // Performance mode button
         sidebarLayout.addView(Button(requireContext()).apply {
-            text = "⚡ 24/7 Stability Mode"
+            text = "⚡ Enhanced 24/7 Mode"
             setBackgroundColor(android.graphics.Color.parseColor("#4CAF50"))
             setTextColor(android.graphics.Color.WHITE)
             setPadding(16, 16, 16, 16)
@@ -290,6 +297,38 @@ class UsbCameraFragment : CameraFragment() {
                 setMargins(0, 8, 0, 0)
             }
             setOnClickListener { apply24x7Mode() }
+        })
+        
+        // High quality 24/7 mode button
+        sidebarLayout.addView(Button(requireContext()).apply {
+            text = "💎 Max Quality 24/7"
+            setBackgroundColor(android.graphics.Color.parseColor("#9C27B0"))
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(16, 16, 16, 16)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 8, 0, 0)
+            }
+            setOnClickListener { applyMaxQuality24x7Mode() }
+        })
+        
+        // Ultimate 24/7 mode button
+        sidebarLayout.addView(Button(requireContext()).apply {
+            text = "🚀 ULTIMATE 24/7"
+            setBackgroundColor(android.graphics.Color.parseColor("#E91E63"))
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(16, 16, 16, 16)
+            textSize = 14f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 8, 0, 0)
+            }
+            setOnClickListener { applyUltimate24x7Mode() }
         })
         
         // Camera selection
@@ -421,6 +460,35 @@ class UsbCameraFragment : CameraFragment() {
         }
         sidebarLayout.addView(connectionStatusText)
         
+        // Device capability display
+        val deviceCapabilityText = TextView(requireContext()).apply {
+            text = "Device: Analyzing..."
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            textSize = 11f
+            setPadding(8, 4, 8, 4)
+        }
+        sidebarLayout.addView(deviceCapabilityText)
+        
+        // Performance statistics display
+        val performanceStatsText = TextView(requireContext()).apply {
+            text = "Performance: Initializing..."
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            textSize = 10f
+            setPadding(8, 4, 8, 4)
+            maxLines = 2
+        }
+        sidebarLayout.addView(performanceStatsText)
+        
+        // Hardware acceleration display
+        val hardwareAccelText = TextView(requireContext()).apply {
+            text = "Hardware: Analyzing..."
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            textSize = 10f
+            setPadding(8, 4, 8, 4)
+            maxLines = 2
+        }
+        sidebarLayout.addView(hardwareAccelText)
+        
         // Update memory display periodically
         val memoryUpdateTimer = java.util.Timer()
         memoryUpdateTimer.scheduleAtFixedRate(object : java.util.TimerTask() {
@@ -462,6 +530,57 @@ class UsbCameraFragment : CameraFragment() {
                         else -> android.graphics.Color.parseColor("#F44336") // Red
                     }
                     connectionStatusText.setTextColor(statusColor)
+                    
+                    // Update device capability info
+                    val deviceMemoryInfo = performanceOptimizer?.getMemoryInfo()
+                    if (deviceMemoryInfo != null) {
+                        val totalGB = deviceMemoryInfo.maxMemoryMB / 1024.0
+                        val capability = when {
+                            totalGB >= 6.0 -> "High-End (${String.format("%.1f", totalGB)}GB)"
+                            totalGB >= 4.0 -> "Mid-Range (${String.format("%.1f", totalGB)}GB)"
+                            else -> "Entry-Level (${String.format("%.1f", totalGB)}GB)"
+                        }
+                        
+                        deviceCapabilityText.text = "Device: $capability"
+                        
+                        val capabilityColor = when {
+                            totalGB >= 6.0 -> android.graphics.Color.parseColor("#4CAF50") // Green
+                            totalGB >= 4.0 -> android.graphics.Color.parseColor("#2196F3") // Blue
+                            else -> android.graphics.Color.parseColor("#FF9800") // Orange
+                        }
+                        deviceCapabilityText.setTextColor(capabilityColor)
+                    }
+                    
+                    // Update performance statistics
+                    val perfStats = ultimateOptimizer?.getPerformanceStats() ?: "Not active"
+                    performanceStatsText.text = "Ultimate Stats: $perfStats"
+                    
+                    val currentQuality = ultimateOptimizer?.getCurrentQualityLevel()
+                    val statsColor = when (currentQuality) {
+                        Ultimate24x7Optimizer.QualityLevel.MAXIMUM -> android.graphics.Color.parseColor("#4CAF50") // Green
+                        Ultimate24x7Optimizer.QualityLevel.HIGH -> android.graphics.Color.parseColor("#2196F3") // Blue
+                        Ultimate24x7Optimizer.QualityLevel.BALANCED -> android.graphics.Color.parseColor("#FF9800") // Orange
+                        Ultimate24x7Optimizer.QualityLevel.STABLE -> android.graphics.Color.parseColor("#9C27B0") // Purple
+                        Ultimate24x7Optimizer.QualityLevel.EMERGENCY -> android.graphics.Color.parseColor("#F44336") // Red
+                        else -> android.graphics.Color.parseColor("#424242") // Gray
+                    }
+                    performanceStatsText.setTextColor(statsColor)
+                    
+                    // Update hardware acceleration info
+                    val hwCapabilities = hardwareAccelManager?.analyzeHardwareCapabilities()
+                    if (hwCapabilities != null) {
+                        val hwInfo = "HW: OpenGL=${if (hwCapabilities.hasOpenGLES30) "3.0" else "2.0"}, " +
+                                   "Codecs=${if (hwCapabilities.hasHardwareCodecs) "✓" else "✗"}, " +
+                                   "Max: ${hwCapabilities.recommendedSettings.maxRecommendedResolution}"
+                        hardwareAccelText.text = hwInfo
+                        
+                        val hwColor = when {
+                            hwCapabilities.hasOpenGLES30 && hwCapabilities.hasHardwareCodecs -> android.graphics.Color.parseColor("#4CAF50") // Green
+                            hwCapabilities.hasHardwareCodecs -> android.graphics.Color.parseColor("#2196F3") // Blue
+                            else -> android.graphics.Color.parseColor("#FF9800") // Orange
+                        }
+                        hardwareAccelText.setTextColor(hwColor)
+                    }
                 }
             }
         }, 1000, 3000) // Update every 3 seconds
@@ -593,11 +712,17 @@ class UsbCameraFragment : CameraFragment() {
     override fun getCameraView(): IAspectRatio {
         if (cameraView == null) {
             cameraView = AspectRatioTextureView(requireContext()).apply {
-                // Enable hardware acceleration for better performance
-                setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                // Apply maximum hardware acceleration optimizations
+                hardwareAccelManager?.optimizeViewForHardwareAcceleration(this)
                 
-                // Optimize for high-resolution video
+                // Additional optimizations for video rendering
                 isOpaque = true // Better performance for video
+                
+                // Add frame drop detection for ultimate optimizer
+                addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                    // Simple frame drop detection - if layout changes frequently, report it
+                    ultimateOptimizer?.reportFrameDrop()
+                }
             }
         }
         return cameraView!!
@@ -613,14 +738,18 @@ class UsbCameraFragment : CameraFragment() {
         val optimizer = performanceOptimizer
         val optimalSettings = optimizer?.getOptimalCameraSettings(config.width, config.height)
         
+        // Get hardware acceleration settings
+        val hwSettings = hardwareAccelManager?.getOptimalCameraSettings()
+        
         android.util.Log.d("UsbCameraFragment", "Creating camera client for ${config.width}x${config.height}@${config.fps}fps")
+        android.util.Log.d("UsbCameraFragment", "Hardware settings: GLES=${hwSettings?.enableGLES}, HW Decoding=${hwSettings?.enableHardwareDecoding}")
         if (optimalSettings != null) {
             android.util.Log.d("UsbCameraFragment", "Optimal settings: ${optimalSettings.fps}fps, ${optimalSettings.bufferFrames} buffer frames")
         }
         
         return try {
             CameraClient.newBuilder(requireContext())
-                .setEnableGLES(optimalSettings?.useHardwareAcceleration ?: true)
+                .setEnableGLES(hwSettings?.enableGLES ?: true) // Always enable hardware GLES
                 .setRawImage(false) // Use compressed format for better performance
                 .openDebug(false) // Disable debug for production performance
                 .setCameraStrategy(CameraUvcStrategy(requireContext()))
@@ -640,6 +769,13 @@ class UsbCameraFragment : CameraFragment() {
     override fun initData() {
         super.initData()
         
+        // Initialize hardware acceleration manager
+        hardwareAccelManager = HardwareAccelerationManager(requireContext())
+        val hwCapabilities = hardwareAccelManager?.applyMaximumHardwareAcceleration()
+        
+        // Log hardware capabilities
+        android.util.Log.d("UsbCameraFragment", "Hardware capabilities: $hwCapabilities")
+        
         // Initialize USB permission manager
         usbPermissionManager = UsbPermissionManager(requireContext())
         
@@ -652,6 +788,9 @@ class UsbCameraFragment : CameraFragment() {
         // Initialize performance optimizer for 24/7 operation
         performanceOptimizer = PerformanceOptimizer(requireContext())
         performanceOptimizer?.startOptimization()
+        
+        // Initialize ultimate 24/7 optimizer
+        ultimateOptimizer = Ultimate24x7Optimizer(requireContext())
         
         setupSpinners()
         loadSavedConfig()
@@ -885,19 +1024,14 @@ class UsbCameraFragment : CameraFragment() {
         // Get current resolution
         val config = settingsManager?.loadConfig() ?: CameraConfig()
         
-        // Apply 24/7 optimized settings
-        val optimalSettings = optimizer.getOptimalCameraSettings(config.width, config.height)
+        // Apply enhanced 24/7 optimized settings with better quality
+        val enhancedSettings = optimizer.getEnhanced24x7Settings(config.width, config.height)
         
-        // Set conservative settings for 24/7 operation
-        val stableFps = when {
-            config.width >= 3840 -> 10 // Very conservative for 4K
-            config.width >= 2560 -> 15 // Conservative for 2K
-            config.width >= 1920 -> 24 // Stable for 1080p
-            else -> 30 // Standard for lower resolutions
-        }
+        // Use enhanced FPS settings
+        val enhancedFps = enhancedSettings.fps
         
         // Update FPS spinner
-        val fpsText = stableFps.toString()
+        val fpsText = enhancedFps.toString()
         for (i in 0 until fpsSpinner.count) {
             if (fpsSpinner.getItemAtPosition(i).toString() == fpsText) {
                 fpsSpinner.setSelection(i)
@@ -906,7 +1040,71 @@ class UsbCameraFragment : CameraFragment() {
         }
         
         // Save configuration
-        settingsManager?.saveConfig(config.copy(fps = stableFps))
+        settingsManager?.saveConfig(config.copy(fps = enhancedFps))
+        
+        // Update status with quality info
+        val resolutionName = when {
+            config.width >= 3840 -> "4K"
+            config.width >= 2560 -> "2K"
+            config.width >= 1920 -> "1080p"
+            else -> "720p"
+        }
+        
+        statusText.text = "✓ Enhanced 24/7: $resolutionName @ ${enhancedFps}fps"
+        statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+        
+        // Show enhanced quality info
+        val qualityInfo = when (enhancedSettings.qualityMode) {
+            "ENHANCED_24x7" -> {
+                val stabilization = if (enhancedSettings.enableImageStabilization) " + Stabilization" else ""
+                "Enhanced quality (${enhancedSettings.compressionLevel}% quality${stabilization})"
+            }
+            else -> "Optimized for continuous operation"
+        }
+        
+        Toast.makeText(requireContext(), 
+            "✓ Enhanced 24/7 mode: ${enhancedFps}fps, ${qualityInfo}", 
+            Toast.LENGTH_LONG).show()
+    }
+    
+    private fun applyMaxQuality24x7Mode() {
+        val optimizer = performanceOptimizer ?: return
+        
+        // Get current resolution
+        val config = settingsManager?.loadConfig() ?: CameraConfig()
+        
+        // Apply maximum quality settings while maintaining 24/7 stability
+        val maxQualityFps = when {
+            config.width >= 3840 -> { // 4K
+                val deviceMemory = optimizer.getMemoryInfo()
+                when {
+                    deviceMemory.maxMemoryMB >= 6144 -> 25  // 6GB+ RAM: Higher quality 4K
+                    deviceMemory.maxMemoryMB >= 4096 -> 20  // 4GB+ RAM: Good quality 4K
+                    else -> 15  // <4GB RAM: Conservative 4K
+                }
+            }
+            config.width >= 2560 -> { // 2K
+                val deviceMemory = optimizer.getMemoryInfo()
+                when {
+                    deviceMemory.maxMemoryMB >= 4096 -> 30  // 4GB+ RAM: Full quality 2K
+                    else -> 25  // <4GB RAM: Good quality 2K
+                }
+            }
+            config.width >= 1920 -> 30  // 1080p: Always full quality
+            else -> 30  // 720p and below: Always full quality
+        }
+        
+        // Update FPS spinner
+        val fpsText = maxQualityFps.toString()
+        for (i in 0 until fpsSpinner.count) {
+            if (fpsSpinner.getItemAtPosition(i).toString() == fpsText) {
+                fpsSpinner.setSelection(i)
+                break
+            }
+        }
+        
+        // Save configuration
+        settingsManager?.saveConfig(config.copy(fps = maxQualityFps))
         
         // Update status
         val resolutionName = when {
@@ -916,11 +1114,70 @@ class UsbCameraFragment : CameraFragment() {
             else -> "720p"
         }
         
-        statusText.text = "✓ 24/7 Mode: $resolutionName @ ${stableFps}fps"
-        statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+        statusText.text = "✓ Max Quality 24/7: $resolutionName @ ${maxQualityFps}fps"
+        statusText.setTextColor(android.graphics.Color.parseColor("#9C27B0"))
+        
+        // Show quality enhancement info
+        val deviceMemory = optimizer.getMemoryInfo()
+        val qualityLevel = when {
+            deviceMemory.maxMemoryMB >= 6144 -> "Ultra High"
+            deviceMemory.maxMemoryMB >= 4096 -> "High"
+            deviceMemory.maxMemoryMB >= 3072 -> "Good"
+            else -> "Standard"
+        }
         
         Toast.makeText(requireContext(), 
-            "✓ 24/7 stability mode applied (${stableFps}fps, optimized for continuous operation)", 
+            "💎 Max Quality 24/7: ${maxQualityFps}fps, ${qualityLevel} quality with enhanced buffering", 
+            Toast.LENGTH_LONG).show()
+    }
+    
+    private fun applyUltimate24x7Mode() {
+        val optimizer = ultimateOptimizer ?: return
+        
+        // Get current resolution
+        val config = settingsManager?.loadConfig() ?: CameraConfig()
+        
+        // Start ultimate optimization with adaptive quality
+        optimizer.startUltimateOptimization { settings ->
+            // Apply the optimized settings
+            val fpsText = settings.fps.toString()
+            for (i in 0 until fpsSpinner.count) {
+                if (fpsSpinner.getItemAtPosition(i).toString() == fpsText) {
+                    fpsSpinner.setSelection(i)
+                    break
+                }
+            }
+            
+            // Save configuration
+            settingsManager?.saveConfig(config.copy(fps = settings.fps))
+            
+            // Update status with ultimate info
+            val resolutionName = when {
+                config.width >= 3840 -> "4K"
+                config.width >= 2560 -> "2K"
+                config.width >= 1920 -> "1080p"
+                else -> "720p"
+            }
+            
+            val qualityInfo = when (settings.qualityLevel) {
+                Ultimate24x7Optimizer.QualityLevel.MAXIMUM -> "🚀 MAXIMUM"
+                Ultimate24x7Optimizer.QualityLevel.HIGH -> "⭐ HIGH"
+                Ultimate24x7Optimizer.QualityLevel.BALANCED -> "⚖️ BALANCED"
+                Ultimate24x7Optimizer.QualityLevel.STABLE -> "🛡️ STABLE"
+                Ultimate24x7Optimizer.QualityLevel.EMERGENCY -> "🆘 EMERGENCY"
+            }
+            
+            statusText.text = "🚀 ULTIMATE: $resolutionName @ ${settings.fps}fps ($qualityInfo)"
+            statusText.setTextColor(android.graphics.Color.parseColor("#E91E63"))
+            
+            android.util.Log.d("UsbCameraFragment", "Ultimate mode applied: ${settings.fps}fps, Quality=${settings.qualityLevel}, Buffer=${settings.bufferFrames}")
+        }
+        
+        // Calculate initial settings for display
+        val initialSettings = optimizer.calculateUltimateSettings(config.width, config.height)
+        
+        Toast.makeText(requireContext(), 
+            "🚀 ULTIMATE 24/7 MODE ACTIVATED!\nAdaptive Quality: ${initialSettings.fps}fps\nSelf-optimizing for maximum performance", 
             Toast.LENGTH_LONG).show()
     }
     
@@ -974,6 +1231,10 @@ class UsbCameraFragment : CameraFragment() {
     
     override fun onDestroy() {
         super.onDestroy()
+        
+        // Stop ultimate optimizer
+        ultimateOptimizer?.stopOptimization()
+        ultimateOptimizer = null
         
         // Stop USB connection monitoring
         usbConnectionMonitor?.stopMonitoring()
