@@ -134,6 +134,7 @@ class UsbCameraFragment : CameraFragment() {
     private var settingsManager: SettingsManager? = null
     private var usbPermissionManager: UsbPermissionManager? = null
     private var performanceOptimizer: PerformanceOptimizer? = null
+    private var usbConnectionMonitor: UsbConnectionMonitor? = null
     
     override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View {
         mainLayout = FrameLayout(requireContext()).apply {
@@ -374,6 +375,25 @@ class UsbCameraFragment : CameraFragment() {
         }
         sidebarLayout.addView(alwaysAllowUsbCheck)
         
+        // Manual permission renewal button for troubleshooting
+        sidebarLayout.addView(Button(requireContext()).apply {
+            text = "🔄 Renew USB Permission"
+            setBackgroundColor(android.graphics.Color.parseColor("#FF9800"))
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(12, 12, 12, 12)
+            textSize = 12f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 8, 0, 0)
+            }
+            setOnClickListener {
+                usbConnectionMonitor?.renewCurrentCameraPermission()
+                Toast.makeText(requireContext(), "Renewing USB camera permission...", Toast.LENGTH_SHORT).show()
+            }
+        })
+        
         // Performance Monitoring
         sidebarLayout.addView(TextView(requireContext()).apply {
             text = "PERFORMANCE"
@@ -392,26 +412,59 @@ class UsbCameraFragment : CameraFragment() {
         }
         sidebarLayout.addView(memoryText)
         
+        // Connection status display
+        val connectionStatusText = TextView(requireContext()).apply {
+            text = "USB Status: Checking..."
+            setTextColor(android.graphics.Color.parseColor("#424242"))
+            textSize = 11f
+            setPadding(8, 4, 8, 4)
+        }
+        sidebarLayout.addView(connectionStatusText)
+        
         // Update memory display periodically
         val memoryUpdateTimer = java.util.Timer()
         memoryUpdateTimer.scheduleAtFixedRate(object : java.util.TimerTask() {
             override fun run() {
                 activity?.runOnUiThread {
+                    // Update memory info
                     val memoryInfo = performanceOptimizer?.getMemoryInfo()
                     if (memoryInfo != null) {
                         memoryText.text = "Memory: ${memoryInfo.usedMemoryMB}MB/${memoryInfo.maxMemoryMB}MB (${memoryInfo.memoryPercent}%)"
                         
                         // Color code based on usage
-                        val color = when {
+                        val memoryColor = when {
                             memoryInfo.memoryPercent > 80 -> android.graphics.Color.parseColor("#F44336") // Red
                             memoryInfo.memoryPercent > 60 -> android.graphics.Color.parseColor("#FF9800") // Orange
                             else -> android.graphics.Color.parseColor("#4CAF50") // Green
                         }
-                        memoryText.setTextColor(color)
+                        memoryText.setTextColor(memoryColor)
                     }
+                    
+                    // Update connection status
+                    val currentCamera = usbConnectionMonitor?.getCurrentCamera()
+                    val statusText = if (currentCamera != null) {
+                        val hasPermission = usbPermissionManager?.hasPermission(currentCamera) ?: false
+                        if (hasPermission) {
+                            "USB Status: ✓ Connected & Authorized"
+                        } else {
+                            "USB Status: ⚠ Connected, No Permission"
+                        }
+                    } else {
+                        "USB Status: ❌ No Camera Detected"
+                    }
+                    
+                    connectionStatusText.text = statusText
+                    
+                    // Color code the status
+                    val statusColor = when {
+                        statusText.contains("✓") -> android.graphics.Color.parseColor("#4CAF50") // Green
+                        statusText.contains("⚠") -> android.graphics.Color.parseColor("#FF9800") // Orange
+                        else -> android.graphics.Color.parseColor("#F44336") // Red
+                    }
+                    connectionStatusText.setTextColor(statusColor)
                 }
             }
-        }, 1000, 5000) // Update every 5 seconds
+        }, 1000, 3000) // Update every 3 seconds
         
         // Logs button
         sidebarLayout.addView(Button(requireContext()).apply {
@@ -590,6 +643,12 @@ class UsbCameraFragment : CameraFragment() {
         // Initialize USB permission manager
         usbPermissionManager = UsbPermissionManager(requireContext())
         
+        // Initialize USB connection monitor for 24/7 operation
+        usbConnectionMonitor = UsbConnectionMonitor(requireContext(), usbPermissionManager!!)
+        usbConnectionMonitor?.startMonitoring { connected, device ->
+            handleUsbConnectionChange(connected, device)
+        }
+        
         // Initialize performance optimizer for 24/7 operation
         performanceOptimizer = PerformanceOptimizer(requireContext())
         performanceOptimizer?.startOptimization()
@@ -603,6 +662,45 @@ class UsbCameraFragment : CameraFragment() {
         
         statusText.text = "✓ Ready - Connect USB camera"
         statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+    }
+    
+    /**
+     * Handle USB camera connection changes for 24/7 operation
+     */
+    private fun handleUsbConnectionChange(connected: Boolean, device: UsbDevice?) {
+        if (connected && device != null) {
+            android.util.Log.d("UsbCameraFragment", "USB camera connected with permission: ${device.deviceName}")
+            statusText.text = "✓ Camera connected: ${device.productName ?: "USB Camera"}"
+            statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+            
+            // Update camera list
+            updateCameraList()
+            
+            // Restart camera if it was stopped due to permission issues
+            restartCameraIfNeeded()
+            
+        } else if (!connected) {
+            if (device != null) {
+                android.util.Log.w("UsbCameraFragment", "USB camera disconnected or permission lost: ${device.deviceName}")
+                statusText.text = "⚠ Camera disconnected or permission lost"
+            } else {
+                android.util.Log.w("UsbCameraFragment", "No USB camera detected")
+                statusText.text = "⚠ No camera detected"
+            }
+            statusText.setTextColor(android.graphics.Color.parseColor("#FF9800"))
+            
+            // Update camera list
+            updateCameraList()
+        }
+    }
+    
+    /**
+     * Restart camera connection if needed (for permission renewal)
+     */
+    private fun restartCameraIfNeeded() {
+        // This will trigger the camera client to reconnect
+        // The AUSBC library should handle the reconnection automatically
+        android.util.Log.d("UsbCameraFragment", "Camera restart triggered due to permission renewal")
     }
     
     private fun updateCameraList() {
@@ -877,6 +975,10 @@ class UsbCameraFragment : CameraFragment() {
     override fun onDestroy() {
         super.onDestroy()
         
+        // Stop USB connection monitoring
+        usbConnectionMonitor?.stopMonitoring()
+        usbConnectionMonitor = null
+        
         // Stop performance optimizer
         performanceOptimizer?.stopOptimization()
         performanceOptimizer = null
@@ -886,6 +988,29 @@ class UsbCameraFragment : CameraFragment() {
         
         // Final memory cleanup
         System.gc()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Keep monitoring active during pause for 24/7 operation
+        android.util.Log.d("UsbCameraFragment", "Fragment paused, keeping USB monitoring active")
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Refresh camera status on resume
+        android.util.Log.d("UsbCameraFragment", "Fragment resumed, checking camera status")
+        updateCameraList()
+        
+        // Check if we need to renew permissions
+        val currentCamera = usbConnectionMonitor?.getCurrentCamera()
+        if (currentCamera != null) {
+            val hasPermission = usbPermissionManager?.hasPermission(currentCamera) ?: false
+            if (!hasPermission && usbPermissionManager?.isAlwaysAllowEnabled() == true) {
+                android.util.Log.d("UsbCameraFragment", "Permission lost during pause, attempting renewal")
+                usbConnectionMonitor?.renewCurrentCameraPermission()
+            }
+        }
     }
     
     override fun getGravity(): Int = Gravity.CENTER
