@@ -18,16 +18,16 @@ class CameraWatchdog(
     
     companion object {
         private const val TAG = "CameraWatchdog"
-        private const val HEALTH_CHECK_INTERVAL = 10000L // Check every 10 seconds
-        private const val STREAM_TIMEOUT = 30000L // 30 seconds without frames = problem
-        private const val MAX_RECOVERY_ATTEMPTS = 3
-        private const val RECOVERY_DELAY = 5000L // 5 seconds between recovery attempts
-        private const val SURFACE_CHECK_INTERVAL = 5000L // Check surface every 5 seconds
+        private const val HEALTH_CHECK_INTERVAL = 30000L // Check every 30 seconds (less aggressive)
+        private const val STREAM_TIMEOUT = 60000L // 60 seconds without frames = problem (more tolerant)
+        private const val MAX_RECOVERY_ATTEMPTS = 2 // Fewer recovery attempts
+        private const val RECOVERY_DELAY = 10000L // 10 seconds between recovery attempts (longer delay)
+        private const val SURFACE_CHECK_INTERVAL = 30000L // Check surface every 30 seconds (less frequent)
         
-        // Proactive refresh settings
-        private const val PROACTIVE_REFRESH_INTERVAL = 180000L // 3 minutes for testing
-        private const val MEMORY_REFRESH_THRESHOLD = 70 // Refresh if memory > 70%
-        private const val UPTIME_REFRESH_INTERVAL = 900000L // 15 minutes for deep refresh
+        // Proactive refresh settings - much more conservative
+        private const val PROACTIVE_REFRESH_INTERVAL = 3600000L // 1 hour (conservative)
+        private const val MEMORY_REFRESH_THRESHOLD = 85 // Refresh if memory > 85% (higher threshold)
+        private const val UPTIME_REFRESH_INTERVAL = 7200000L // 2 hours for deep refresh
     }
     
     private var watchdogTimer: Timer? = null
@@ -139,7 +139,7 @@ class CameraWatchdog(
     }
     
     /**
-     * Start proactive refresh system for bulletproof 24/7 operation
+     * Start proactive refresh system - very conservative for stability
      */
     private fun startProactiveRefresh() {
         proactiveRefreshTimer = Timer("ProactiveRefresh", true)
@@ -147,11 +147,11 @@ class CameraWatchdog(
             override fun run() {
                 checkProactiveRefresh()
             }
-        }, PROACTIVE_REFRESH_INTERVAL, PROACTIVE_REFRESH_INTERVAL) // Check every 3 minutes for testing
+        }, PROACTIVE_REFRESH_INTERVAL, PROACTIVE_REFRESH_INTERVAL) // Check every hour, act only when critical
     }
     
     /**
-     * Check if proactive refresh is needed
+     * Check if proactive refresh is needed - very conservative approach
      */
     private fun checkProactiveRefresh() {
         if (!isMonitoring || isRecovering) return
@@ -160,30 +160,26 @@ class CameraWatchdog(
         val uptime = currentTime - startTime
         val timeSinceLastRefresh = currentTime - lastProactiveRefresh
         
-        // Check various conditions for proactive refresh
+        // Only refresh in critical situations
         val shouldRefresh = when {
-            // Time-based refresh (every 3 minutes for testing)
-            timeSinceLastRefresh >= PROACTIVE_REFRESH_INTERVAL -> {
-                Log.d(TAG, "Proactive refresh: 3-minute maintenance cycle")
-                "3-minute maintenance cycle"
-            }
-            
-            // Long uptime refresh (every 15 minutes)
-            uptime >= UPTIME_REFRESH_INTERVAL && timeSinceLastRefresh >= UPTIME_REFRESH_INTERVAL -> {
-                Log.d(TAG, "Proactive refresh: Long uptime maintenance")
-                "Long uptime maintenance (${uptime / 60000}min)"
-            }
-            
-            // Memory-based refresh
+            // Critical memory usage only
             getMemoryUsagePercent() >= MEMORY_REFRESH_THRESHOLD -> {
-                Log.d(TAG, "Proactive refresh: High memory usage")
-                "High memory usage (${getMemoryUsagePercent()}%)"
+                Log.d(TAG, "Proactive refresh: Critical memory usage")
+                "Critical memory usage (${getMemoryUsagePercent()}%)"
             }
             
-            // Recovery count based refresh
-            refreshCount >= 5 -> {
-                Log.d(TAG, "Proactive refresh: Multiple recoveries detected")
-                "Multiple recoveries detected ($refreshCount)"
+            // Many recovery attempts indicate real problems
+            refreshCount >= 10 -> {
+                Log.d(TAG, "Proactive refresh: Too many recoveries")
+                "Too many recoveries ($refreshCount)"
+            }
+            
+            // Very long uptime with memory issues
+            uptime >= UPTIME_REFRESH_INTERVAL && 
+            timeSinceLastRefresh >= UPTIME_REFRESH_INTERVAL && 
+            getMemoryUsagePercent() >= 75 -> {
+                Log.d(TAG, "Proactive refresh: Long uptime + memory pressure")
+                "Long uptime + memory pressure (${uptime / 3600000}h)"
             }
             
             else -> null
