@@ -10,9 +10,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import com.jiangdg.ausbc.CameraClient
 import com.jiangdg.ausbc.base.CameraFragment
-import com.jiangdg.ausbc.camera.CameraUvcStrategy
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
@@ -143,7 +141,6 @@ class UsbCameraFragment : CameraFragment() {
     private var ultimateOptimizer: Ultimate24x7Optimizer? = null
     private var hardwareAccelManager: HardwareAccelerationManager? = null
     private var cameraWatchdog: CameraWatchdog? = null
-    private var cameraClient: com.jiangdg.ausbc.CameraClient? = null
     
     override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View {
         mainLayout = FrameLayout(requireContext()).apply {
@@ -844,17 +841,14 @@ class UsbCameraFragment : CameraFragment() {
     override fun getCameraView(): IAspectRatio {
         if (cameraView == null) {
             cameraView = AspectRatioTextureView(requireContext()).apply {
-                // Apply maximum hardware acceleration optimizations
+                // Enable hardware acceleration for the camera view
+                setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                // Set black background
+                setBackgroundColor(android.graphics.Color.BLACK)
                 hardwareAccelManager?.optimizeViewForHardwareAcceleration(this)
                 
                 // Additional optimizations for video rendering
                 isOpaque = true // Better performance for video
-                
-                // Add frame drop detection for ultimate optimizer
-                addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                    // Simple frame drop detection - if layout changes frequently, report it
-                    ultimateOptimizer?.reportFrameDrop()
-                }
             }
         }
         return cameraView!!
@@ -862,7 +856,34 @@ class UsbCameraFragment : CameraFragment() {
     
     override fun getCameraViewContainer(): ViewGroup = cameraContainer
     
-    override fun getCameraClient(): CameraClient? {
+    override fun onCameraState(self: com.jiangdg.ausbc.MultiCameraClient.ICamera, code: com.jiangdg.ausbc.callback.ICameraStateCallBack.State, msg: String?) {
+        when (code) {
+            com.jiangdg.ausbc.callback.ICameraStateCallBack.State.OPENED -> {
+                android.util.Log.d("UsbCameraFragment", "Camera opened successfully")
+                activity?.runOnUiThread {
+                    statusText.text = "Camera: Connected"
+                    statusText.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
+                }
+            }
+            com.jiangdg.ausbc.callback.ICameraStateCallBack.State.CLOSED -> {
+                android.util.Log.d("UsbCameraFragment", "Camera closed")
+                activity?.runOnUiThread {
+                    statusText.text = "Camera: Disconnected"
+                    statusText.setTextColor(android.graphics.Color.parseColor("#F44336"))
+                }
+            }
+            com.jiangdg.ausbc.callback.ICameraStateCallBack.State.ERROR -> {
+                android.util.Log.e("UsbCameraFragment", "Camera error: $msg")
+                activity?.runOnUiThread {
+                    statusText.text = "Camera Error: $msg"
+                    statusText.setTextColor(android.graphics.Color.parseColor("#F44336"))
+                }
+                cameraWatchdog?.reportCameraError("Camera state error: $msg")
+            }
+        }
+    }
+    
+    override fun getCameraRequest(): CameraRequest {
         settingsManager = SettingsManager(requireContext())
         val config = settingsManager?.loadConfig() ?: CameraConfig()
         
@@ -886,98 +907,24 @@ class UsbCameraFragment : CameraFragment() {
         }
         
         return try {
-            val client = CameraClient.newBuilder(requireContext())
-                .setEnableGLES(hwSettings?.enableGLES ?: true) // Always enable hardware GLES
-                .setRawImage(false) // Use compressed format for better performance
-                .openDebug(false) // Disable debug for production performance
-                .setCameraStrategy(CameraUvcStrategy(requireContext()))
-                .setCameraRequest(
-                    CameraRequest.Builder()
-                        .setPreviewWidth(config.width)
-                        .setPreviewHeight(config.height)
-                        .create()
-                )
-                .build()
-            
-            // Store reference for watchdog
-            cameraClient = client
-            
-            // Set up frame callback for watchdog monitoring
-            client?.let { setupFrameMonitoring(it) }
-            
-            // Apply advanced memory management if available
-            if (bufferSizeMB > 100) { // Only if we have enough memory
-                setupAdvancedMemoryManagement(client, bufferSizeMB)
-            }
-            
-            client
+            CameraRequest.Builder()
+                .setPreviewWidth(config.width)
+                .setPreviewHeight(config.height)
+                .setRenderMode(if (hwSettings?.enableGLES == true) CameraRequest.RenderMode.OPENGL else CameraRequest.RenderMode.NORMAL)
+                .setDefaultRotateType(com.jiangdg.ausbc.render.env.RotateType.ANGLE_0)
+                .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO)
+                .setAspectRatioShow(true)
+                .setCaptureRawImage(false)
+                .setRawPreviewData(false)
+                .create()
         } catch (e: Exception) {
-            android.util.Log.e("UsbCameraFragment", "Failed to create camera client", e)
-            cameraWatchdog?.reportCameraError("Failed to create camera client: ${e.message}")
-            null
-        }
-    }
-    
-    /**
-     * Set up advanced memory management for the camera client
-     */
-    private fun setupAdvancedMemoryManagement(client: CameraClient?, bufferSizeMB: Int) {
-        if (client == null) return
-        
-        android.util.Log.d("UsbCameraFragment", "Setting up advanced memory management with ${bufferSizeMB}MB buffer")
-        
-        // Create a memory management timer
-        val memoryTimer = java.util.Timer("CameraMemoryManager", true)
-        memoryTimer.scheduleAtFixedRate(object : java.util.TimerTask() {
-            override fun run() {
-                try {
-                    // Monitor memory usage
-                    val runtime = Runtime.getRuntime()
-                    val usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024
-                    val maxMemory = runtime.maxMemory() / 1024 / 1024
-                    val memoryPercent = (usedMemory * 100 / maxMemory).toInt()
-                    
-                    // If memory usage is high, force cleanup
-                    if (memoryPercent > 75) {
-                        android.util.Log.d("UsbCameraFragment", "High memory usage (${memoryPercent}%), forcing cleanup")
-                        
-                        // Force garbage collection
-                        System.gc()
-                        System.runFinalization()
-                        System.gc()
-                        
-                        // Report to watchdog that we're managing memory
-                        cameraWatchdog?.reportFrameReceived()
-                    }
-                    
-                } catch (e: Exception) {
-                    android.util.Log.e("UsbCameraFragment", "Memory management error", e)
-                }
-            }
-        }, 10000, 12000) // Check every 12 seconds
-    }
-    
-    /**
-     * Set up frame monitoring for watchdog (very conservative)
-     */
-    private fun setupFrameMonitoring(client: CameraClient) {
-        try {
-            // Simple monitoring - just report that camera client was created successfully
-            android.util.Log.d("UsbCameraFragment", "Camera client created, starting conservative frame monitoring")
-            cameraWatchdog?.reportFrameReceived()
-            
-            // Set up a very conservative frame report (assume camera is working unless proven otherwise)
-            val frameReportTimer = java.util.Timer()
-            frameReportTimer.scheduleAtFixedRate(object : java.util.TimerTask() {
-                override fun run() {
-                    // Assume frames are being received if camera is still active
-                    // Only report issues if there are real problems
-                    cameraWatchdog?.reportFrameReceived()
-                }
-            }, 10000, 30000) // Report every 30 seconds (much less frequent)
-            
-        } catch (e: Exception) {
-            android.util.Log.e("UsbCameraFragment", "Failed to setup frame monitoring", e)
+            android.util.Log.e("UsbCameraFragment", "Failed to create camera request", e)
+            cameraWatchdog?.reportCameraError("Failed to create camera request: ${e.message}")
+            // Return default camera request
+            CameraRequest.Builder()
+                .setPreviewWidth(1280)
+                .setPreviewHeight(720)
+                .create()
         }
     }
     
@@ -988,9 +935,8 @@ class UsbCameraFragment : CameraFragment() {
         android.util.Log.d("UsbCameraFragment", "Restarting camera for recovery")
         
         try {
-            // Close existing camera client
-            cameraClient?.closeCamera()
-            cameraClient = null
+            // Close existing camera using the new API
+            getCurrentCamera()?.closeCamera()
             
             // Clear camera view
             cameraView = null
@@ -1001,13 +947,9 @@ class UsbCameraFragment : CameraFragment() {
             // Small delay to ensure cleanup
             Thread.sleep(1000)
             
-            // Recreate camera view and client
-            val newClient = getCameraClient()
-            if (newClient != null) {
-                android.util.Log.d("UsbCameraFragment", "Camera restart completed")
-            } else {
-                throw Exception("Failed to create new camera client")
-            }
+            // The camera will be reopened automatically by the framework
+            // when a USB device is detected
+            android.util.Log.d("UsbCameraFragment", "Camera restart initiated")
             
         } catch (e: Exception) {
             android.util.Log.e("UsbCameraFragment", "Camera restart failed", e)
@@ -1189,15 +1131,13 @@ class UsbCameraFragment : CameraFragment() {
     
     /**
      * Applies camera control adjustments (brightness, contrast, saturation)
-     * Uses the UVC strategy to communicate with the camera hardware
+     * Uses direct methods from CameraFragment base class
      */
     private fun applyCameraControl(control: String, value: Int) {
-        val strategy = getCurrentCameraStrategy() as? CameraUvcStrategy ?: return
-        
         when (control) {
-            "Brightness" -> strategy.setBrightness(value)
-            "Contrast" -> strategy.setContrast(value)
-            "Saturation" -> strategy.setSaturation(value)
+            "Brightness" -> setBrightness(value)
+            "Contrast" -> setContrast(value)
+            "Saturation" -> setSaturation(value)
         }
     }
     
@@ -1606,9 +1546,8 @@ class UsbCameraFragment : CameraFragment() {
         cameraWatchdog?.stopWatchdog()
         cameraWatchdog = null
         
-        // Close camera client
-        cameraClient?.closeCamera()
-        cameraClient = null
+        // Close camera using new API
+        getCurrentCamera()?.closeCamera()
         
         // Stop ultimate optimizer
         ultimateOptimizer?.stopOptimization()

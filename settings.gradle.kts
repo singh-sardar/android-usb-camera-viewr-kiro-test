@@ -17,9 +17,12 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://verve.jfrog.io/artifactory/verve-gradle-dev") }  //.gradle 
+
+        maven { url = uri("https://repository.liferay.com/nexus/content/repositories/public/") }
         maven { url = uri("https://jitpack.io") }
-        maven { url = uri("https://raw.githubusercontent.com/saki4510t/libcommon/master/repository/") }
+        maven { url = uri("https://verve.jfrog.io/artifactory/verve-gradle-dev") }
+
+        //maven { url = uri("https://raw.githubusercontent.com/saki4510t/libcommon/master/repository/") }
     }
 }
 

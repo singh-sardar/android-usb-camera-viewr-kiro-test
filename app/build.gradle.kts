@@ -70,11 +70,13 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // AndroidUSBCamera (AUSBC) - USB camera library with native libuvc support
-    val uvcCameraVersion = "3.2.7"
+    //val uvcCameraVersion = "3.2.7"
+    val uvcCameraVersion = "3.3.3"
     implementation("com.github.jiangdongguo.AndroidUSBCamera:libausbc:$uvcCameraVersion")
     implementation("com.github.jiangdongguo.AndroidUSBCamera:libuvc:$uvcCameraVersion")
     implementation("com.github.jiangdongguo.AndroidUSBCamera:libnative:$uvcCameraVersion")
     implementation("com.github.jiangdongguo.AndroidUSBCamera:libuvccommon:$uvcCameraVersion")
+
 
     // Testing
     testImplementation("junit:junit:4.13.2")
