@@ -74,11 +74,12 @@
             android:name=".UsbCameraActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:screenOrientation="unspecified"
             android:theme="@style/Theme.App.Starting"
             android:keepScreenOn="true"
             android:hardwareAccelerated="true"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|density|screenLayout|smallestScreenSize|layoutDirection">
             
             <!-- USB device attached intent - Auto-launch when camera connected -->
             <!-- This will still show the dialog, but our permission manager will handle it properly -->

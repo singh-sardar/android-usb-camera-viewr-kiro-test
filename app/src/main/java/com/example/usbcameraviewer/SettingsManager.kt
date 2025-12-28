@@ -14,7 +14,9 @@ data class CameraConfig(
     val fps: Int = 30,
     val rotation: Int = 0,
     val flipHorizontal: Boolean = false,
-    val flipVertical: Boolean = false
+    val flipVertical: Boolean = false,
+    val useOpengl: Boolean = false,
+    val mode: String = "manual" // "manual", "24x7", "xiaomi"
 )
 
 /**
@@ -38,6 +40,8 @@ class SettingsManager(context: Context) {
         private const val KEY_FLIP_VERTICAL = "flip_vertical"
         private const val KEY_AUTO_LAUNCH = "auto_launch"
         private const val KEY_LAST_DEVICE = "last_device"
+        private const val KEY_USE_OPENGL = "use_opengl"
+        private const val KEY_MODE = "mode"
     }
     
     fun saveConfig(config: CameraConfig) {
@@ -49,6 +53,8 @@ class SettingsManager(context: Context) {
             putInt(KEY_ROTATION, config.rotation)
             putBoolean(KEY_FLIP_HORIZONTAL, config.flipHorizontal)
             putBoolean(KEY_FLIP_VERTICAL, config.flipVertical)
+            putBoolean(KEY_USE_OPENGL, config.useOpengl)
+            putString(KEY_MODE, config.mode)
             apply()
         }
     }
@@ -61,7 +67,9 @@ class SettingsManager(context: Context) {
             fps = prefs.getInt(KEY_FPS, 30),
             rotation = prefs.getInt(KEY_ROTATION, 0),
             flipHorizontal = prefs.getBoolean(KEY_FLIP_HORIZONTAL, false),
-            flipVertical = prefs.getBoolean(KEY_FLIP_VERTICAL, false)
+            flipVertical = prefs.getBoolean(KEY_FLIP_VERTICAL, false),
+            useOpengl = prefs.getBoolean(KEY_USE_OPENGL, false),
+            mode = prefs.getString(KEY_MODE, "manual") ?: "manual"
         )
     }
     
