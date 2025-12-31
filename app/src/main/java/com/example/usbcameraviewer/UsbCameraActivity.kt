@@ -328,7 +328,6 @@ class UsbCameraFragment : CameraFragment() {
             } else {
                 cameraView = AspectRatioTextureView(requireContext()).apply {
                     setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                    setBackgroundColor(android.graphics.Color.BLACK)
                     isOpaque = true
                 }
             }
